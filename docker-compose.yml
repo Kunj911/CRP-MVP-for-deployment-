@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  # ── 1. Database (MySQL 8)
+  db:
+    image: mysql:8.0
+    container_name: livetrace_db
+    restart: always
+    environment:
+      MYSQL_DATABASE: livetrace
+      MYSQL_USER: livetrace_user
+      MYSQL_PASSWORD: SecureDbPassword123!
+      MYSQL_ROOT_PASSWORD: RootSecurePassword123!
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u$$MYSQL_USER", "-p$$MYSQL_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── 2. Cache & Session Store (Redis)
+  redis:
+    image: redis:7-alpine
+    container_name: livetrace_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── 3. Malware Scanning Daemon (ClamAV)
+  clamav:
+    image: clamav/clamav:stable
+    container_name: livetrace_clamav
+    restart: always
+    ports:
+      - "3310:3310"
+    healthcheck:
+      test: ["CMD", "clamdscan", "--version"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # ── 4. FastAPI Backend Application
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: livetrace_backend
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      - DB_HOST=db
+      - REDIS_URL=redis://redis:6379/0
+      - CLAMAV_HOST=clamav
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      clamav:
+        condition: service_healthy
+    volumes:
+      - shared_uploads:/app/uploads
+
+  # ── 5. Celery Async Task Worker
+  celery_worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: livetrace_worker
+    restart: always
+    command: celery -A app.core.celery_app.celery_app worker --loglevel=info
+    env_file:
+      - .env.production
+    environment:
+      - DB_HOST=db
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── 6. Nginx + React Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: livetrace_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:
+  redis_data:
+  shared_uploads:
