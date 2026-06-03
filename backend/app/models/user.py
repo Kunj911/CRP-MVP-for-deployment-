@@ -27,8 +27,6 @@ if TYPE_CHECKING:
     from app.models.milestone import Milestone
     from app.models.notification import Notification
     from app.models.order import Order
-    from app.models.order_comment import OrderComment
-    from app.models.qa_report import QAReport
     from app.models.document import Document
     from app.models.login_session import LoginSession
 
@@ -94,19 +92,16 @@ class User(Base):
         "MediaFile", back_populates="uploader", lazy="select"
     )
     documents_uploaded: Mapped[List["Document"]] = relationship(
-        "Document", back_populates="uploader", lazy="select"
-    )
-    qa_reports_verified: Mapped[List["QAReport"]] = relationship(
-        "QAReport", back_populates="verifier", lazy="select"
+        "Document",
+        back_populates="uploader",
+        foreign_keys="Document.uploaded_by",
+        lazy="select",
     )
     notifications: Mapped[List["Notification"]] = relationship(
         "Notification", back_populates="user", lazy="select"
     )
     audit_logs: Mapped[List["AuditLog"]] = relationship(
         "AuditLog", back_populates="user", lazy="select"
-    )
-    comments: Mapped[List["OrderComment"]] = relationship(
-        "OrderComment", back_populates="user", lazy="select"
     )
     login_sessions: Mapped[List["LoginSession"]] = relationship(
         "LoginSession", back_populates="user", lazy="select"

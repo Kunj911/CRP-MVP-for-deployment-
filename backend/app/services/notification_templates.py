@@ -20,11 +20,153 @@ from dataclasses import dataclass
 from typing import Optional
 
 
+def _button(url: str, label: str, color: str = "#E6820A") -> str:
+    return (
+        f'<a href="{url}" style="display:inline-block;background:{color};color:#fff;'
+        "padding:12px 20px;text-decoration:none;border-radius:6px;"
+        'font-weight:bold;margin-top:8px;">'
+        f"{label}</a>"
+    )
+
+
+def _email_shell(title: str, body: str) -> str:
+    return f"""
+    <div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#1f2937;">
+      <div style="background:#3A6B4A;padding:22px;border-radius:8px 8px 0 0;">
+        <h2 style="color:#ffffff;margin:0;">Client Relationship Portal</h2>
+        <p style="color:#D3EBD9;margin:4px 0 0;">{title}</p>
+      </div>
+      <div style="background:#FAFAF7;padding:24px;border:1px solid #EDE6D6;border-top:0;border-radius:0 0 8px 8px;">
+        {body}
+        <p style="color:#6b7280;font-size:12px;margin-top:24px;">
+          This is an automated transactional email from the Client Relationship Portal.
+        </p>
+      </div>
+    </div>
+    """
+
+
 @dataclass
 class EmailTemplate:
     subject: str
     body_text: str
     body_html: str
+
+
+def login_alert_email(
+    full_name: str,
+    role: str,
+    login_time: str,
+    ip_address: str,
+    user_agent: str,
+    dashboard_url: str,
+) -> EmailTemplate:
+    subject = "[CRP] New admin login detected"
+    body_text = (
+        f"Hello {full_name},\n\n"
+        "A login was recorded for your CRP account.\n\n"
+        f"Role: {role}\n"
+        f"Time: {login_time} UTC\n"
+        f"IP address: {ip_address or 'Unknown'}\n"
+        f"Device: {user_agent or 'Unknown'}\n\n"
+        "If this was you, no action is needed. If you do not recognize this login, change your password immediately."
+    )
+    body_html = _email_shell(
+        "Security alert",
+        f"""
+        <p>Hello <strong>{full_name}</strong>,</p>
+        <p>A login was recorded for your CRP account.</p>
+        <div style="background:#FFF8EC;border-left:4px solid #E6820A;padding:12px 16px;border-radius:4px;">
+          <p><strong>Role:</strong> {role}</p>
+          <p><strong>Time:</strong> {login_time} UTC</p>
+          <p><strong>IP address:</strong> {ip_address or 'Unknown'}</p>
+          <p><strong>Device:</strong> {user_agent or 'Unknown'}</p>
+        </div>
+        <p>If this was you, no action is needed. If not, change your password immediately.</p>
+        {_button(dashboard_url, "Open Portal")}
+        """,
+    )
+    return EmailTemplate(subject=subject, body_text=body_text, body_html=body_html)
+
+
+def password_reset_email(
+    full_name: str,
+    reset_url: str,
+    expires_minutes: int = 30,
+) -> EmailTemplate:
+    subject = "[CRP] Reset your password"
+    body_text = (
+        f"Hello {full_name},\n\n"
+        "Use the link below to reset your password.\n\n"
+        f"{reset_url}\n\n"
+        f"This link expires in {expires_minutes} minutes. If you did not request this, ignore this email."
+    )
+    body_html = _email_shell(
+        "Password reset",
+        f"""
+        <p>Hello <strong>{full_name}</strong>,</p>
+        <p>Use the button below to reset your password.</p>
+        {_button(reset_url, "Reset Password")}
+        <p>This link expires in {expires_minutes} minutes. If you did not request this, ignore this email.</p>
+        """,
+    )
+    return EmailTemplate(subject=subject, body_text=body_text, body_html=body_html)
+
+
+def customer_created_email(
+    company_name: str,
+    contact_name: str,
+    portal_url: str,
+) -> EmailTemplate:
+    subject = "[CRP] Your customer portal is ready"
+    greeting = contact_name or company_name
+    body_text = (
+        f"Hello {greeting},\n\n"
+        f"Your customer portal for {company_name} is ready.\n\n"
+        f"Portal: {portal_url}\n\n"
+        "You can use the portal to track orders, documents, and shipment updates."
+    )
+    body_html = _email_shell(
+        "Welcome",
+        f"""
+        <p>Hello <strong>{greeting}</strong>,</p>
+        <p>Your customer portal for <strong>{company_name}</strong> is ready.</p>
+        <p>You can use it to track orders, documents, and shipment updates.</p>
+        {_button(portal_url, "Open Portal", "#3A6B4A")}
+        """,
+    )
+    return EmailTemplate(subject=subject, body_text=body_text, body_html=body_html)
+
+
+def order_created_email(
+    order_code: str,
+    customer_name: str,
+    product_name: str,
+    portal_url: str,
+) -> EmailTemplate:
+    subject = f"[CRP] Order {order_code} created"
+    order_url = f"{portal_url.rstrip('/')}/orders/{order_code}"
+    body_text = (
+        f"Dear {customer_name},\n\n"
+        "A new order has been created in your portal.\n\n"
+        f"Order: {order_code}\n"
+        f"Product: {product_name}\n\n"
+        f"Track it here:\n{order_url}\n\n"
+        "You will receive updates as the order progresses."
+    )
+    body_html = _email_shell(
+        "Order created",
+        f"""
+        <p>Dear <strong>{customer_name}</strong>,</p>
+        <p>A new order has been created in your portal.</p>
+        <div style="background:#EAF5ED;border-left:4px solid #3A6B4A;padding:12px 16px;border-radius:4px;">
+          <p><strong>Order:</strong> {order_code}</p>
+          <p><strong>Product:</strong> {product_name}</p>
+        </div>
+        {_button(order_url, "Track Order", "#3A6B4A")}
+        """,
+    )
+    return EmailTemplate(subject=subject, body_text=body_text, body_html=body_html)
 
 
 @dataclass

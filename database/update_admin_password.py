@@ -1,5 +1,6 @@
 import pymysql
 import bcrypt
+from db_config import get_db_connection
 
 password = "Admin@123"
 salt = bcrypt.gensalt(rounds=12)
@@ -8,13 +9,7 @@ hashed = bcrypt.hashpw(password.strip().encode('utf-8'), salt).decode('utf-8')
 print(f"Generated hash for '{password}': {hashed}")
 
 try:
-    conn = pymysql.connect(
-        host="localhost",
-        port=3306,
-        user="root",
-        password="kunj@2006",
-        database="live_trace_dashboard"
-    )
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
         "UPDATE users SET password_hash = %s WHERE email = 'admin@livetrace.com'",

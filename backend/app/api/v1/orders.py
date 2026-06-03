@@ -41,6 +41,7 @@ from app.schemas.order import (
     OrderStatusUpdate,
     OrderUpdate,
     ShipmentStatus,
+    OrderWithNewCustomerCreate,
 )
 from app.services import order_service
 
@@ -129,6 +130,122 @@ def create_order(
         data=OrderResponse.model_validate(order),
         message=f"Order '{order.order_code}' created successfully",
     )
+
+
+# ── POST /orders/with-new-customer ─────────────────────────────────────────────
+
+@router.post(
+    "/with-new-customer",
+    response_model=SuccessResponse[OrderResponse],
+    status_code=201,
+    summary="Create an order with a new customer",
+    description=(
+        "Onboards a new customer profile and maps their first order within a single transaction. "
+        "Requires ADMIN or SUPER_ADMIN role."
+    ),
+)
+def create_order_with_new_customer(
+    body: OrderWithNewCustomerCreate,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> SuccessResponse[OrderResponse]:
+    order = order_service.create_order_with_new_customer(
+        data=body,
+        current_user=current_user,
+        db=db,
+    )
+    return SuccessResponse(
+        data=OrderResponse.model_validate(order),
+        message=f"Order '{order.order_code}' for new customer created successfully",
+    )
+
+
+# ── GET /orders/dashboard/stats ───────────────────────────────────────────────
+
+@router.get(
+    "/dashboard/stats",
+    summary="Get admin dashboard statistics",
+    description="Retrieve statistics for documents, orders, pending reviews, and missing documents."
+)
+def get_dashboard_stats(
+    current_user: CurrentUser,
+    db: DbSession,
+):
+    from app.core.exceptions import ForbiddenException
+    if current_user.role not in {"SUPER_ADMIN", "ADMIN", "QA", "DOCUMENTATION", "WAREHOUSE"}:
+        raise ForbiddenException("Only staff users can access dashboard statistics")
+
+    from app.models.order import Order
+    from app.models.document import Document
+    from app.models.order_document_requirement import OrderDocumentRequirement
+    from datetime import datetime, time, date
+
+    # 1. Active orders (eager load customer relationship)
+    from sqlalchemy.orm import joinedload
+    active_orders = (
+        db.query(Order)
+        .options(joinedload(Order.customer))
+        .filter(Order.shipment_status.notin_(["DELIVERED", "CANCELLED"]))
+        .all()
+    )
+    active_count = len(active_orders)
+
+    # 2. Dispatched orders
+    dispatched_count = db.query(Order).filter(Order.shipment_status.in_(["SHIPPED", "SHIPMENT_DISPATCHED"])).count()
+
+    # 3. Documents uploaded today
+    today_start = datetime.combine(date.today(), time.min)
+    docs_today_count = db.query(Document).filter(
+        Document.uploaded_at >= today_start,
+        Document.is_deleted == False
+    ).count()
+
+    # 4. Pending reviews count
+    pending_reviews_count = db.query(Document).filter(
+        Document.status.in_(["uploaded", "under_review"]),
+        Document.is_deleted == False
+    ).count()
+
+    # 5. Orders missing required documents (batch query to avoid N+1 loop)
+    missing_docs_orders = []
+    active_order_ids = [o.id for o in active_orders]
+    requirements_by_order = {}
+    if active_order_ids:
+        all_reqs = (
+            db.query(OrderDocumentRequirement)
+            .filter(
+                OrderDocumentRequirement.order_id.in_(active_order_ids),
+                OrderDocumentRequirement.required == True,
+                OrderDocumentRequirement.approved == False
+            )
+            .all()
+        )
+        for req in all_reqs:
+            requirements_by_order.setdefault(req.order_id, []).append(req.document_type)
+
+    for order in active_orders:
+        missing_types = requirements_by_order.get(order.id, [])
+        if missing_types:
+            customer_name = order.customer.company_name if order.customer else "Unknown"
+            missing_docs_orders.append({
+                "order_id": order.id,
+                "order_code": order.order_code,
+                "customer_name": customer_name,
+                "status": order.shipment_status,
+                "missing_documents": missing_types
+            })
+
+
+    return {
+        "status": "success",
+        "data": {
+            "active_orders_count": active_count,
+            "dispatched_orders_count": dispatched_count,
+            "docs_uploaded_today": docs_today_count,
+            "pending_reviews_count": pending_reviews_count,
+            "orders_missing_required_documents": missing_docs_orders
+        }
+    }
 
 
 # ── GET /orders/{order_id} ────────────────────────────────────────────────────

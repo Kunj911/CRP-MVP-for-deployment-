@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Action Required: Upload Documentation{% endblock %}
+
+{% block subtitle %}Documentation Request{% endblock %}
+
+{% block content %}
+<h2>Dear {{ customer_name }},</h2>
+<p>An export operation requires your action. A required document has been requested for your order.</p>
+
+<div class="info-card" style="border-left-color: #E6820A;">
+    <p><strong>Order Code:</strong> {{ order_code }}</p>
+    <p><strong>Requested Document:</strong> <strong>{{ document_type_label }}</strong></p>
+    <p><strong>Requirement Status:</strong> Pending Upload</p>
+</div>
+
+<p>Please log in to the portal and upload the required file to prevent delays in processing or customs clearance.</p>
+
+<div class="button-container">
+    <a href="{{ upload_url }}" class="button" style="background-color: #E6820A; box-shadow: 0 4px 6px rgba(230, 130, 10, 0.15);">Upload Document</a>
+</div>
+
+<p>If you have already uploaded this document or if you have any questions, please contact your account coordinator.</p>
+<p>Regards,<br>The Fittree Documentation Desk</p>
+{% endblock %}

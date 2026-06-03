@@ -20,12 +20,14 @@ WORKDIR /app
 
 # Install libmagic runtime dependency
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
     libmagic1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy installed pip packages and application files
 COPY --from=builder /root/.local /root/.local
 COPY backend/app ./app
+COPY backend/templates ./templates
 COPY backend/main.py .
 
 ENV PATH=/root/.local/bin:$PATH

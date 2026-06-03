@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Order Status Update{% endblock %}
+
+{% block subtitle %}Operational Update{% endblock %}
+
+{% block content %}
+<h2>Dear {{ customer_name }},</h2>
+<p>Your order status has been updated in the Fittree Relation Portal.</p>
+
+<div class="info-card">
+    <p><strong>Order Code:</strong> {{ order_code }}</p>
+    <p><strong>New Status:</strong> <strong style="color: #3A6B4A; text-transform: uppercase;">{{ status_label }}</strong></p>
+</div>
+
+<p>You can track the complete timeline, milestone stages, and related export documentation directly in the portal.</p>
+
+<div class="button-container">
+    <a href="{{ order_url }}" class="button">Track Your Order</a>
+</div>
+
+<p>If you have any questions or require updates, please contact your logistics coordinator.</p>
+<p>Regards,<br>The Fittree Logistics Team</p>
+{% endblock %}

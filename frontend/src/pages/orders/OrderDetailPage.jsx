@@ -1,38 +1,27 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Upload, Package } from 'lucide-react'
+import { ArrowLeft, Upload, Package, Loader2, AlertCircle } from 'lucide-react'
 import MilestoneTimeline from '../../components/milestone/MilestoneTimeline'
-import DocumentVault from '../../components/documents/DocumentVault'
+import DocumentChecklist from '../../components/documents/DocumentChecklist'
 import UploadModal from '../../components/upload/UploadModal'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import useAuthStore from '../../store/authStore'
-
-// Demo data
-const DEMO_ORDER = { id: 1, order_code: 'ORD-2025-001', status: 'QA_TESTING', commodity_name: 'Turmeric Powder', quantity_kg: 5000, destination_country: 'Germany', customer_name: 'Acme Spices LLC', overall_progress: 44, created_at: '2025-05-10' }
-const DEMO_MILESTONES = [
-  { id:1, stage_name:'PROCUREMENT',           stage_label:'Procurement',           status:'COMPLETED', completed_at:'2025-05-11T09:00:00Z', completer:{full_name:'Raj Patel'} },
-  { id:2, stage_name:'RAW_MATERIAL_VERIFIED', stage_label:'Raw Material Verified', status:'COMPLETED', completed_at:'2025-05-12T11:30:00Z', completer:{full_name:'Raj Patel'} },
-  { id:3, stage_name:'QA_TESTING',            stage_label:'QA Testing',            status:'IN_PROGRESS' },
-  { id:4, stage_name:'PACKAGING_STARTED',     stage_label:'Packaging Started',     status:'PENDING' },
-  { id:5, stage_name:'PACKAGING_COMPLETED',   stage_label:'Packaging Completed',   status:'PENDING' },
-  { id:6, stage_name:'DOCUMENTS_UPLOADED',    stage_label:'Documents Uploaded',    status:'PENDING' },
-  { id:7, stage_name:'CONTAINER_LOADING',     stage_label:'Container Loading',     status:'PENDING' },
-  { id:8, stage_name:'SHIPMENT_DISPATCHED',   stage_label:'Shipment Dispatched',   status:'PENDING' },
-  { id:9, stage_name:'DELIVERED',             stage_label:'Delivered',             status:'PENDING' },
-]
-const DEMO_PHOTOS = [
-  { id:1, url:'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=400', label:'Procurement' },
-  { id:2, url:'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=400', label:'QA Testing' },
-  { id:3, url:'https://images.unsplash.com/photo-1567892737950-30c4db37cd89?w=400', label:'Packaging' },
-  { id:4, url:'https://images.unsplash.com/photo-1611288875785-5d403c52b9ef?w=400', label:'Loading' },
-]
-const DEMO_DOCS = [
-  { id:1, document_type:'INVOICE',  file_name:'invoice_ORD2025001.pdf', uploaded_at:'2025-05-12T10:00:00Z' },
-  { id:2, document_type:'COA',      file_name:'coa_turmeric_lot42.pdf', uploaded_at:'2025-05-13T14:00:00Z' },
-]
+import { ordersApi, uploadsApi, documentsApi } from '../../api'
 
 const TABS = ['Timeline', 'Photos', 'Documents', 'QA Reports']
+
+const STATUS_PROGRESS = {
+  CREATED: 5,
+  PROCUREMENT: 15,
+  QA_TESTING: 35,
+  PACKAGING: 50,
+  DOCUMENTATION: 65,
+  READY_FOR_SHIPMENT: 78,
+  SHIPPED: 90,
+  SHIPMENT_DISPATCHED: 90,
+  DELIVERED: 100,
+}
 
 export default function OrderDetailPage() {
   const { orderId } = useParams()
@@ -41,7 +30,118 @@ export default function OrderDetailPage() {
   const [activeTab, setActiveTab] = useState('Timeline')
   const [uploadOpen, setUploadOpen] = useState(false)
 
-  const order = DEMO_ORDER  // Replace with: useOrder(orderId)
+  const [order, setOrder] = useState(null)
+  const [milestones, setMilestones] = useState([])
+  const [photos, setPhotos] = useState([])
+  const [documents, setDocuments] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  const loadData = async () => {
+    try {
+      setError(null)
+      
+      // Fetch order details
+      const orderRes = await ordersApi.getById(orderId)
+      const rawOrder = orderRes.data?.data
+      if (!rawOrder) {
+        throw new Error('Order not found')
+      }
+
+      // Fetch timeline (milestones + progress)
+      const timelineRes = await ordersApi.getTimeline(orderId)
+      const timeline = timelineRes.data?.data
+
+      // Fetch photos
+      const photosRes = await uploadsApi.listMediaByOrder(orderId)
+      const rawPhotos = Array.isArray(photosRes.data?.data) ? photosRes.data.data : []
+
+      // Fetch documents
+      const docsRes = await documentsApi.listByOrder(orderId)
+      const rawDocs = Array.isArray(docsRes.data?.data) ? docsRes.data.data : []
+
+      // Normalize order details
+      const status = rawOrder.shipment_status || rawOrder.status
+      setOrder({
+        id: rawOrder.id,
+        order_code: rawOrder.order_code,
+        status: status,
+        commodity_name: rawOrder.product_name || rawOrder.commodity_name,
+        quantity_kg: Number(rawOrder.quantity || 0),
+        destination_country: rawOrder.customer?.country,
+        overall_progress: timeline?.overall_progress ?? STATUS_PROGRESS[status] ?? 0,
+        customer_name: rawOrder.customer?.company_name,
+        created_at: rawOrder.created_at,
+      })
+
+      // Set milestones
+      setMilestones(timeline?.milestones || [])
+
+      // Set photos
+      setPhotos(
+        rawPhotos.map((p) => ({
+          id: p.id,
+          url: p.file_url,
+          label: p.media_type?.replace(/_/g, ' ') || 'Photo',
+        }))
+      )
+
+      // Set documents
+      setDocuments(rawDocs)
+    } catch (err) {
+      console.error('Error fetching order details:', err)
+      const status = err.response?.status
+      if (status === 404) {
+        setError('Order not found or access denied.')
+      } else {
+        setError('Failed to load order details. Please try again.')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    setLoading(true)
+    loadData()
+  }, [orderId])
+
+  const handleDownload = async (doc) => {
+    try {
+      const response = await documentsApi.download(doc.id)
+      const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/octet-stream' })
+      const link = document.createElement('a')
+      link.href = window.URL.createObjectURL(blob)
+      link.download = doc.file_name || 'document.pdf'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(link.href)
+    } catch (error) {
+      console.error('Download failed:', error)
+      alert('Failed to download file.')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="py-32 text-center flex flex-col items-center justify-center gap-2">
+        <Loader2 className="w-8 h-8 animate-spin text-saffron-500" />
+        <p className="text-sm text-gray-400 font-body">Loading shipment details...</p>
+      </div>
+    )
+  }
+
+  if (error || !order) {
+    return (
+      <div className="max-w-md mx-auto py-16 text-center space-y-4">
+        <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
+        <h2 className="font-heading font-semibold text-lg text-gray-900">Access Denied or Not Found</h2>
+        <p className="text-sm text-gray-500 font-body">{error || 'This order does not exist.'}</p>
+        <Button onClick={() => navigate('/orders')}>Back to Orders</Button>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-3xl space-y-4">
@@ -49,7 +149,7 @@ export default function OrderDetailPage() {
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/orders')}
             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-beige-200 text-gray-500 transition-colors shrink-0"
           >
             <ArrowLeft size={18} />
@@ -60,7 +160,8 @@ export default function OrderDetailPage() {
               <Badge status={order.status} size="md" />
             </div>
             <p className="text-sm text-gray-500 font-body">
-              {order.commodity_name} · {order.quantity_kg?.toLocaleString()} kg → {order.destination_country}
+              {order.commodity_name} · {order.quantity_kg?.toLocaleString()} kg
+              {order.destination_country ? ` → ${order.destination_country}` : ''}
             </p>
           </div>
         </div>
@@ -110,21 +211,27 @@ export default function OrderDetailPage() {
         {/* Tab content */}
         <div className="p-5">
           {activeTab === 'Timeline' && (
-            <MilestoneTimeline milestones={DEMO_MILESTONES} />
+            <MilestoneTimeline milestones={milestones} />
           )}
 
           {activeTab === 'Photos' && (
             <div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                {DEMO_PHOTOS.map((photo) => (
-                  <div key={photo.id} className="relative group rounded-xl overflow-hidden aspect-square bg-beige-100">
-                    <img src={photo.url} alt={photo.label} className="w-full h-full object-cover" />
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5">
-                      <p className="text-[11px] text-white font-body">{photo.label}</p>
+              {photos.length ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {photos.map((photo) => (
+                    <div key={photo.id} className="relative group rounded-xl overflow-hidden aspect-square bg-beige-100">
+                      <img src={photo.url} alt={photo.label} className="w-full h-full object-cover" />
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5">
+                        <p className="text-[11px] text-white font-body">{photo.label}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 py-6 text-center font-body">
+                  No photos uploaded yet for this order.
+                </p>
+              )}
               {isStaff && (
                 <button
                   onClick={() => setUploadOpen(true)}
@@ -137,9 +244,10 @@ export default function OrderDetailPage() {
           )}
 
           {activeTab === 'Documents' && (
-            <DocumentVault
-              documents={DEMO_DOCS}
-              onDownload={(doc) => alert(`Downloading ${doc.file_name}…`)}
+            <DocumentChecklist
+              orderId={order.id}
+              orderCode={order.order_code}
+              onTimelineUpdate={loadData}
             />
           )}
 
@@ -158,6 +266,7 @@ export default function OrderDetailPage() {
         onClose={() => setUploadOpen(false)}
         orderId={order.id}
         orderCode={order.order_code}
+        onSuccess={loadData}
       />
     </div>
   )

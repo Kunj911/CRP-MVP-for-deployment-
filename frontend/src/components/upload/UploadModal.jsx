@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { X, Upload, Image, FileText, CheckCircle2 } from 'lucide-react'
 import Button from '../ui/Button'
+import { uploadsApi } from '../../api'
 
 const PHOTO_CATEGORIES = [
   { value: 'PROCUREMENT_IMAGE', label: '🌾 Procurement',  color: 'bg-amber-50 border-amber-200' },
@@ -10,23 +11,39 @@ const PHOTO_CATEGORIES = [
 ]
 
 const DOC_TYPES = [
-  { value: 'INVOICE',                   label: 'Invoice' },
-  { value: 'BL_COPY',                   label: 'Bill of Lading' },
-  { value: 'COA',                        label: 'Certificate of Analysis' },
-  { value: 'PHYTOSANITARY_CERTIFICATE', label: 'Phytosanitary Certificate' },
-  { value: 'LAB_REPORT',                label: 'Lab Report' },
-  { value: 'PACKING_LIST',              label: 'Packing List' },
+  { value: 'invoice',                   label: 'Invoice' },
+  { value: 'purchase_order',            label: 'Purchase Order (PO)' },
+  { value: 'packing_list',              label: 'Packing List' },
+  { value: 'certificate_of_analysis',   label: 'Certificate of Analysis' },
+  { value: 'product_specification',     label: 'Product Spec' },
+  { value: 'bill_of_lading',            label: 'Bill of Lading' },
+  { value: 'lab_report',                label: 'Lab Report' },
+  { value: 'phytosanitary_certificate', label: 'Phytosanitary Certificate' },
+  { value: 'insurance_certificate',     label: 'Insurance Certificate' },
+  { value: 'certificate_of_origin',     label: 'Certificate of Origin' },
+  { value: 'other',                     label: 'Other' },
 ]
 
-export default function UploadModal({ isOpen, onClose, orderId, orderCode }) {
-  const [tab, setTab] = useState('photo')          // 'photo' | 'document'
+export default function UploadModal({ isOpen, onClose, orderId, orderCode, onSuccess, initialTab = 'photo', initialDocType = null }) {
+  const [tab, setTab] = useState(initialTab)          // 'photo' | 'document'
   const [category, setCategory] = useState(null)
-  const [docType, setDocType] = useState(null)
+  const [docType, setDocType] = useState(initialDocType)
   const [file, setFile] = useState(null)
   const [preview, setPreview] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [done, setDone] = useState(false)
   const fileInputRef = useRef()
+
+  useEffect(() => {
+    if (isOpen) {
+      setTab(initialTab)
+      setDocType(initialDocType)
+      setCategory(null)
+      setFile(null)
+      setPreview(null)
+      setDone(false)
+    }
+  }, [isOpen, initialTab, initialDocType])
 
   if (!isOpen) return null
 
@@ -42,10 +59,22 @@ export default function UploadModal({ isOpen, onClose, orderId, orderCode }) {
   async function handleUpload() {
     if (!file || (tab === 'photo' && !category) || (tab === 'document' && !docType)) return
     setUploading(true)
-    // Simulate — replace with real API call
-    await new Promise((r) => setTimeout(r, 1500))
-    setUploading(false)
-    setDone(true)
+    try {
+      if (tab === 'photo') {
+        await uploadsApi.uploadPhoto(file, orderId, category)
+      } else {
+        await uploadsApi.uploadDocument(file, orderId, docType)
+      }
+      setDone(true)
+      if (onSuccess) {
+        onSuccess()
+      }
+    } catch (err) {
+      console.error('Upload failed:', err)
+      alert(err.response?.data?.error?.message || 'Upload failed. Please try again.')
+    } finally {
+      setUploading(false)
+    }
   }
 
   function handleClose() {

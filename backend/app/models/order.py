@@ -35,9 +35,10 @@ if TYPE_CHECKING:
     from app.models.media_file import MediaFile
     from app.models.milestone import Milestone
     from app.models.notification import Notification
-    from app.models.order_comment import OrderComment
-    from app.models.qa_report import QAReport
     from app.models.user import User
+    from app.models.order_document_requirement import OrderDocumentRequirement
+    from app.models.order_event import OrderEvent
+
 
 
 class Order(Base):
@@ -128,18 +129,19 @@ class Order(Base):
     documents: Mapped[List["Document"]] = relationship(
         "Document", back_populates="order", cascade="all, delete-orphan", lazy="select"
     )
-    qa_reports: Mapped[List["QAReport"]] = relationship(
-        "QAReport", back_populates="order", cascade="all, delete-orphan", lazy="select"
-    )
     notifications: Mapped[List["Notification"]] = relationship(
-        "Notification", back_populates="order", cascade="all, delete-orphan", lazy="select"
+    "Notification",back_populates="order",foreign_keys="Notification.order_id",cascade="all, delete-orphan",lazy="select"
     )
     audit_logs: Mapped[List["AuditLog"]] = relationship(
         "AuditLog", back_populates="order", lazy="select"
     )
-    comments: Mapped[List["OrderComment"]] = relationship(
-        "OrderComment", back_populates="order", cascade="all, delete-orphan", lazy="select"
+    document_requirements: Mapped[List["OrderDocumentRequirement"]] = relationship(
+        "OrderDocumentRequirement", back_populates="order", cascade="all, delete-orphan", lazy="select"
     )
+    events: Mapped[List["OrderEvent"]] = relationship(
+        "OrderEvent", back_populates="order", cascade="all, delete-orphan", lazy="select"
+    )
+
 
     def __repr__(self) -> str:
         return (

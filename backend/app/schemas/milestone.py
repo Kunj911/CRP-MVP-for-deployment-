@@ -160,27 +160,24 @@ class MilestoneResponse(BaseModel):
 class MilestoneTimelineItem(BaseModel):
     """
     A single node in the order timeline response.
-
-    Adds:
-    - stage_index: position in the 9-stage sequence (0-8)
-    - is_active: True if this is the current in-progress stage
-    - is_completed: True if status == COMPLETED
-    - completer: who completed it (if completed)
+    Can represent either a milestone progress step or an order event log.
     """
     id: int
     order_id: int
-    stage_name: MilestoneStage
+    stage_name: str
     stage_label: str
-    stage_index: int            # 0-based position in STAGE_SEQUENCE
-    status: MilestoneStatus
-    is_active: bool             # status == IN_PROGRESS
-    is_completed: bool          # status == COMPLETED
-    remarks: Optional[str]
-    completed_at: Optional[datetime]
+    stage_index: Optional[int] = None
+    status: Optional[str] = None
+    is_active: bool = False
+    is_completed: bool = False
+    remarks: Optional[str] = None
+    completed_at: Optional[datetime] = None
     created_at: datetime
     completer: Optional[CompleterInfo] = None
+    item_type: str = "milestone"  # "milestone" or "event"
 
     model_config = {"from_attributes": True}
+
 
 
 class OrderTimelineResponse(BaseModel):

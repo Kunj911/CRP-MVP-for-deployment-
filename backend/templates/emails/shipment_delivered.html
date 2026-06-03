@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Shipment Delivered{% endblock %}
+
+{% block subtitle %}Delivery Confirmation{% endblock %}
+
+{% block content %}
+<h2>Dear {{ customer_name }},</h2>
+<p>We are pleased to inform you that your shipment for order <strong>{{ order_code }}</strong> has been successfully delivered.</p>
+
+<div class="info-card" style="background-color: #f0fff4; border-left-color: #38a169;">
+    <p><strong>Order Code:</strong> {{ order_code }}</p>
+    <p><strong>Delivery Timestamp:</strong> {{ delivered_at }} (UTC)</p>
+    <p><strong>Status:</strong> Delivered</p>
+</div>
+
+<p>You can access final shipping records, weights, quality reports, and download related invoices in the customer portal.</p>
+
+<div class="button-container">
+    <a href="{{ order_url }}" class="button" style="background-color: #38a169; box-shadow: 0 4px 6px rgba(56, 161, 105, 0.15);">View Order Details</a>
+</div>
+
+<p>Thank you for choosing Fittree Agri Commodities. We appreciate your business.</p>
+<p>Regards,<br>The Fittree Operations Team</p>
+{% endblock %}

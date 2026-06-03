@@ -29,6 +29,7 @@ class AuditLog(Base):
 
     __table_args__ = (
         Index("idx_audit_user", "user_id"),
+        Index("idx_audit_order", "order_id"),
     )
 
     # ── Primary key ───────────────────────────────────────────────────────────
@@ -55,7 +56,6 @@ class AuditLog(Base):
     order_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("orders.order_id", ondelete="SET NULL"),
         nullable=True,
-        index=True,
     )
 
     # ── Human-readable description ────────────────────────────────────────────

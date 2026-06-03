@@ -8,9 +8,11 @@ import { toast } from 'sonner'
 
 // Demo credentials helper (pre-fills form only — actual auth goes through backend)
 const DEMO = [
-  { label: 'Admin',     email: 'admin@livetrace.com',     password: 'Admin@123',    role: 'ADMIN'     },
-  { label: 'Customer',  email: 'client1@spiceworld.com',   password: 'Admin@123',    role: 'CUSTOMER'  },
-  { label: 'Warehouse', email: 'warehouse@livetrace.com',  password: 'Admin@123',    role: 'WAREHOUSE' },
+  { label: 'Admin',     email: 'admin@livetrace.com',     password: 'Admin@123',      role: 'ADMIN'     },
+  { label: 'Customer',  email: 'client1@spiceworld.com',   password: 'Spiceworld@123', role: 'CUSTOMER'  },
+  { label: 'Warehouse', email: 'warehouse@livetrace.com',  password: 'Warehouse@123',  role: 'WAREHOUSE' },
+  { label: 'QA',        email: 'qa@livetrace.com',         password: 'QA@123',         role: 'QA'        },
+  { label: 'Docs',      email: 'docs@livetrace.com',       password: 'Docs@123',       role: 'DOCUMENTATION' },
 ]
 
 export default function LoginPage() {

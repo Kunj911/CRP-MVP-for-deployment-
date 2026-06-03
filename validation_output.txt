@@ -1,0 +1,35 @@
+Database verification started...
+============================================================
+                DATABASE VALIDATION SUMMARY
+============================================================
+Table customers           : 4 records
+Table users               : 8 records
+Table orders              : 18 records
+Table milestones          : 162 records
+Table media_files         : 28 records
+Table documents           : 93 records
+Table qa_reports          : 14 records
+Table notifications       : 41 records
+Table audit_logs          : 59 records
+Table order_comments      : 39 records
+Table login_sessions      : 9 records
+============================================================
+
+Platform Users & Roles:
+  - Poonam (poonam.fittree@gmail.com) -> WAREHOUSE
+  - Poonam (poonam.qa.fittree@gmail.com) -> QA
+  - Poonam (poonam.docs.fittree@gmail.com) -> DOCUMENTATION
+  - Kunj Mistry (kunjalpesh@gmail.com) -> SUPER_ADMIN
+  - Kunj (kunj.fittree@gmail.com) -> CUSTOMER
+  - Roomi (roominesh.fittree@gmail.com) -> CUSTOMER
+  - Yash (yash.fittree@gmail.com) -> CUSTOMER
+  - Vaidhehi (vaidehifittree@gmail.com) -> CUSTOMER
+
+Sample Orders:
+  - ORD-2026-MC01: Turmeric Powder | Status: DELIVERED
+  - ORD-2026-MC02: Black Pepper | Status: SHIPPED
+  - ORD-2026-MC03: Red Chilli Powder | Status: DOCUMENTATION
+  - ORD-2026-MC04: Garlic Powder | Status: QA_TESTING
+  - ORD-2026-MC05: Amchur Powder | Status: CREATED
+
+Verification successfully completed!

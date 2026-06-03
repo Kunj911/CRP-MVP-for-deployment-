@@ -1,0 +1,49 @@
+# ── Web Framework ─────────────────────────────────────────────────────────────
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+
+# ── Database ───────────────────────────────────────────────────────────────────
+sqlalchemy>=2.0.35
+pymysql==1.1.0          # MySQL driver
+cryptography>=43.0.1    # Required by pymysql for auth plugins
+alembic==1.13.1         # DB migrations
+
+# ── Auth & Security ────────────────────────────────────────────────────────────
+python-jose[cryptography]==3.3.0   # JWT
+passlib[bcrypt]==1.7.4             # Password hashing
+bcrypt>=4.2.0
+slowapi==0.1.9                     # Rate limiting
+redis==5.0.3                       # Redis caching and token blacklist
+
+# ── Config & Validation ────────────────────────────────────────────────────────
+pydantic>=2.9.2
+pydantic-settings==2.2.1
+python-dotenv==1.0.1
+
+# ── File Uploads ───────────────────────────────────────────────────────────────
+python-multipart>=0.0.18  # FastAPI file upload support
+pillow>=11.0.0           # Image compression / processing
+aiofiles==23.2.1         # Async file I/O
+python-magic==0.4.27     # MIME type validation
+
+# ── Storage Backends ───────────────────────────────────────────────────────────
+boto3==1.34.100          # AWS S3
+cloudinary==1.40.0       # Cloudinary
+
+# ── Notifications ──────────────────────────────────────────────────────────────
+httpx==0.27.0            # Async HTTP client (WhatsApp API calls)
+jinja2==3.1.4            # Email HTML templates
+aiosmtplib==3.0.1        # Async SMTP
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+python-json-logger==2.0.7
+
+# ── Data Processing ────────────────────────────────────────────────────────────
+pandas>=2.2.3
+openpyxl==3.1.2
+
+# ── Production Hardening & Observability ──────────────────────────────────────
+pyotp>=2.9.0
+sentry-sdk>=2.0.0
+prometheus-fastapi-instrumentator>=7.0.0
+celery>=5.3.6

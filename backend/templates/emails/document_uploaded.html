@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Document Action Required</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; color: #1f2937; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .header { background: linear-gradient(135deg, #f59e0b, #d97706); padding: 35px 20px; text-align: center; color: white; }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 700; }
+        .content { padding: 30px; line-height: 1.6; }
+        .content p { margin: 0 0 15px 0; }
+        .details-box { background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 20px; margin: 20px 0; }
+        .details-box table { width: 100%; border-collapse: collapse; }
+        .details-box td { padding: 6px 0; font-size: 0.95rem; }
+        .details-box td.label { font-weight: 600; color: #4b5563; width: 40%; }
+        .button-container { text-align: center; margin: 30px 0 15px 0; }
+        .button { display: inline-block; padding: 12px 28px; background-color: #f59e0b; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 600; box-shadow: 0 4px 6px rgba(245, 158, 11, 0.15); }
+        .footer { background-color: #f9fafb; padding: 20px; text-align: center; font-size: 0.875rem; color: #6b7280; border-top: 1px solid #f3f4f6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Document Pending Review</h1>
+        </div>
+        <div class="content">
+            <p>Hello Admin/QA Team,</p>
+            <p>A new document has been uploaded for order <strong>{{ order_code }}</strong> and requires review.</p>
+            
+            <div class="details-box">
+                <table>
+                    <tr>
+                        <td class="label">Order Code</td>
+                        <td>{{ order_code }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Document Category</td>
+                        <td>{{ document_type_label }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">File Name</td>
+                        <td>{{ file_name }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Uploaded By</td>
+                        <td>{{ uploaded_by_name }}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <p>Please log in to the portal to view the document, confirm compliance, and mark it as Approved or Rejected.</p>
+            
+            <div class="button-container">
+                <a href="{{ review_url }}" class="button">Review Document</a>
+            </div>
+        </div>
+        <div class="footer">
+            &copy; 2026 Fittree Agri Commodities. All rights reserved.
+        </div>
+    </div>
+</body>
+</html>

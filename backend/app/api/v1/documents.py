@@ -2,20 +2,57 @@
 app/api/v1/documents.py
 
 Document Vault route handlers.
-Provides secure document downloads with audit logging and role-based access.
+Provides secure document downloads, details, approval, and rejection.
 """
 
 import logging
-
-from fastapi import APIRouter, Request
+from typing import Optional
+from fastapi import APIRouter, Request, HTTPException, Body
 from fastapi.responses import FileResponse, RedirectResponse
+from pydantic import BaseModel, Field
 
 from app.api.deps import CurrentUser, DbSession
 from app.services import document_vault_service
+from app.services import upload_service
+from app.schemas.upload import DocumentResponse
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Document Vault"])
+
+
+class RejectionRequest(BaseModel):
+    remarks: str = Field(..., min_length=1, description="Reason for rejection")
+
+
+# ── GET /documents/{doc_id} ───────────────────────────────────────────────────
+
+@router.get(
+    "/documents/{doc_id}",
+    summary="Get document details",
+    response_model=DocumentResponse
+)
+def get_document(
+    doc_id: int,
+    current_user: CurrentUser,
+    db: DbSession,
+):
+    """Retrieve metadata of a single document with proper role scoping."""
+    from app.models.document import Document
+    from app.core.exceptions import NotFoundException, ForbiddenException
+    
+    doc = db.query(Document).filter(Document.id == doc_id, Document.is_deleted == False).first()
+    if not doc:
+        raise NotFoundException("Document", doc_id)
+        
+    # Customer scoping: must own order and document must be approved/visible
+    if current_user.role == "CUSTOMER":
+        if doc.order.customer_id != current_user.customer_id:
+            raise NotFoundException("Document", doc_id)
+        if doc.status != "approved" or doc.visibility != "customer_visible":
+            raise ForbiddenException("You do not have access to this document")
+            
+    return doc
 
 
 # ── GET /documents/{doc_id}/download ──────────────────────────────────────────
@@ -23,17 +60,6 @@ router = APIRouter(tags=["Document Vault"])
 @router.get(
     "/documents/{doc_id}/download",
     summary="Securely download a document",
-    description=(
-        "Download a document from the vault.\n\n"
-        "**Access Rules**:\n"
-        "- CUSTOMER can only download documents linked to their own orders.\n"
-        "- ADMIN, WAREHOUSE, QA, and DOCUMENTATION can download any document.\n\n"
-        "**Features**:\n"
-        "- JWT validation required.\n"
-        "- Automatically logs the download action in the audit logs.\n"
-        "- If storage is local, securely streams the file using FastAPI FileResponse.\n"
-        "- If storage is external (S3), redirects to the secure URL."
-    ),
     responses={
         200: {"description": "File downloaded successfully"},
         307: {"description": "Redirected to external secure storage URL"},
@@ -55,8 +81,6 @@ def download_document(
         ip_address=ip,
     )
     
-    # If the file is stored locally, serve it directly and securely via FileResponse
-    # This avoids exposing a public static directory.
     if is_local:
         return FileResponse(
             path=path_or_url,
@@ -64,7 +88,61 @@ def download_document(
             media_type="application/octet-stream",
             content_disposition_type="attachment"
         )
-    
-    # If the file is stored remotely (S3 / Cloudinary), redirect the user
-    # to the secure URL (which could be a presigned URL in production).
-    return RedirectResponse(url=path_or_url, status_code=307)
+    if not is_local:
+        from urllib.parse import urlparse
+        from app.core.exceptions import ForbiddenException
+        parsed_url = urlparse(path_or_url)
+        if parsed_url.netloc:
+            netloc = parsed_url.netloc.lower()
+            is_allowed = False
+            allowed_domains = ["localhost", "127.0.0.1", "db", "redis", "clamav"]
+            for domain in allowed_domains:
+                if netloc == domain or netloc.startswith(domain + ":"):
+                    is_allowed = True
+                    break
+            if "amazonaws.com" in netloc:
+                is_allowed = True
+            if "cloudinary.com" in netloc:
+                is_allowed = True
+            if not is_allowed:
+                raise ForbiddenException(f"Redirect target domain '{parsed_url.netloc}' is not whitelisted for secure download.")
+        
+        return RedirectResponse(url=path_or_url, status_code=307)
+
+
+# ── POST /documents/{doc_id}/approve ──────────────────────────────────────────
+
+@router.post(
+    "/documents/{doc_id}/approve",
+    summary="Approve a document checklist item",
+    response_model=DocumentResponse
+)
+def approve_doc(
+    doc_id: int,
+    current_user: CurrentUser,
+    db: DbSession,
+):
+    """Approve a document and update checklist status. (Admin/QA only)."""
+    return upload_service.approve_document(doc_id=doc_id, current_user=current_user, db=db)
+
+
+# ── POST /documents/{doc_id}/reject ───────────────────────────────────────────
+
+@router.post(
+    "/documents/{doc_id}/reject",
+    summary="Reject a document checklist item",
+    response_model=DocumentResponse
+)
+def reject_doc(
+    doc_id: int,
+    req: RejectionRequest,
+    current_user: CurrentUser,
+    db: DbSession,
+):
+    """Reject a document with remarks and trigger notifications. (Admin/QA only)."""
+    return upload_service.reject_document(
+        doc_id=doc_id,
+        remarks=req.remarks,
+        current_user=current_user,
+        db=db
+    )

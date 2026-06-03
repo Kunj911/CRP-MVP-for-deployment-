@@ -1,36 +1,96 @@
-import { useState } from 'react'
-import { Search, Filter, Plus } from 'lucide-react'
+import { useEffect, useState, useMemo } from 'react'
+import { Search, Filter, Plus, Loader2, AlertCircle } from 'lucide-react'
 import OrderCard from '../../components/order/OrderCard'
 import Button from '../../components/ui/Button'
 import useAuthStore from '../../store/authStore'
 import { useNavigate } from 'react-router-dom'
+import { ordersApi } from '../../api'
 
-const ALL_ORDERS = [
-  { id:1, order_code:'ORD-2025-001', customer_name:'Acme Spices LLC',  status:'QA_TESTING',          commodity_name:'Turmeric Powder',    quantity_kg:5000, destination_country:'Germany',    overall_progress:44,  active_stage:'QA_TESTING',          created_at:'2025-05-10' },
-  { id:2, order_code:'ORD-2025-002', customer_name:'Spice World GmbH', status:'SHIPMENT_DISPATCHED', commodity_name:'Cumin Seeds',        quantity_kg:2500, destination_country:'Netherlands',overall_progress:78,  active_stage:'SHIPMENT_DISPATCHED', created_at:'2025-05-05' },
-  { id:3, order_code:'ORD-2025-003', customer_name:'Gulf Flavors Co.', status:'PROCUREMENT',         commodity_name:'Black Pepper Whole', quantity_kg:8000, destination_country:'UAE',        overall_progress:11,  active_stage:'PROCUREMENT',         created_at:'2025-05-14' },
-  { id:4, order_code:'ORD-2025-004', customer_name:'Eastern Herbs Inc',status:'DELIVERED',           commodity_name:'Coriander Seeds',    quantity_kg:3200, destination_country:'Canada',     overall_progress:100, active_stage:null,                  created_at:'2025-04-28' },
-]
+const STATUS_FILTERS = ['All', 'Active', 'SHIPPED', 'DELIVERED']
 
-const STATUS_FILTERS = ['All','Active','SHIPMENT_DISPATCHED','DELIVERED']
+const STATUS_PROGRESS = {
+  CREATED: 5,
+  PROCUREMENT: 15,
+  QA_TESTING: 35,
+  PACKAGING: 50,
+  DOCUMENTATION: 65,
+  READY_FOR_SHIPMENT: 78,
+  SHIPPED: 90,
+  SHIPMENT_DISPATCHED: 90,
+  DELIVERED: 100,
+}
+
+function normalizeOrder(order) {
+  const status = order.status || order.shipment_status
+  return {
+    id: order.id,
+    order_code: order.order_code,
+    status,
+    customer_name: order.company_name || order.customer_name,
+    commodity_name: order.product_name || order.commodity_name,
+    quantity_kg: order.quantity_kg ?? Number(order.quantity || 0),
+    destination_country: order.destination_country,
+    overall_progress: order.overall_progress ?? STATUS_PROGRESS[status] ?? 0,
+    active_stage: order.active_stage || (status === 'DELIVERED' ? null : status),
+    created_at: order.created_at,
+  }
+}
 
 export default function OrdersListPage() {
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
   const isAdmin = useAuthStore((s) => s.isAdmin())
   const navigate = useNavigate()
 
-  const filtered = ALL_ORDERS.filter((o) => {
-    const matchSearch = o.order_code.toLowerCase().includes(search.toLowerCase()) ||
-      o.customer_name.toLowerCase().includes(search.toLowerCase()) ||
-      o.commodity_name.toLowerCase().includes(search.toLowerCase())
-    const matchStatus = statusFilter === 'All'
-      ? true
-      : statusFilter === 'Active'
-        ? !['DELIVERED','CANCELLED'].includes(o.status)
-        : o.status === statusFilter
-    return matchSearch && matchStatus
-  })
+  useEffect(() => {
+    let isMounted = true
+    async function loadOrders() {
+      try {
+        setLoading(true)
+        setError(null)
+        console.log('TEMPORARY LOG: API request payload:', { page: 1, per_page: 100 })
+        const res = await ordersApi.list({ page: 1, per_page: 100 })
+        const data = Array.isArray(res.data?.data) ? res.data.data.map(normalizeOrder) : []
+        if (isMounted) {
+          setOrders(data)
+        }
+      } catch (err) {
+        console.error('Error fetching orders:', err)
+        if (isMounted) {
+          setError('Failed to load orders. Please try again.')
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    loadOrders()
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  const filtered = useMemo(() => {
+    console.log('TEMPORARY LOG: Selected frontend filter value:', statusFilter)
+    return orders.filter((o) => {
+      const matchSearch =
+        o.order_code.toLowerCase().includes(search.toLowerCase()) ||
+        (o.customer_name || '').toLowerCase().includes(search.toLowerCase()) ||
+        (o.commodity_name || '').toLowerCase().includes(search.toLowerCase())
+      const matchStatus =
+        statusFilter === 'All'
+          ? true
+          : statusFilter === 'Active'
+          ? !['DELIVERED', 'CANCELLED'].includes(o.status)
+          : o.status === statusFilter
+      return matchSearch && matchStatus
+    })
+  }, [orders, search, statusFilter])
 
   return (
     <div className="space-y-5 max-w-5xl">
@@ -38,7 +98,9 @@ export default function OrdersListPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-heading font-bold text-xl text-gray-900">Orders</h1>
-          <p className="text-sm text-gray-500 font-body">{ALL_ORDERS.length} total shipments</p>
+          <p className="text-sm text-gray-500 font-body">
+            {loading ? 'Loading shipments...' : `${orders.length} total shipments`}
+          </p>
         </div>
         {isAdmin && (
           <Button icon={Plus} size="sm" onClick={() => navigate('/orders/new')}>
@@ -56,6 +118,7 @@ export default function OrdersListPage() {
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by order code, customer, commodity…"
             className="flex-1 text-sm text-gray-700 placeholder-gray-400 outline-none bg-transparent font-body"
+            disabled={loading}
           />
         </div>
 
@@ -64,22 +127,35 @@ export default function OrdersListPage() {
             <button
               key={f}
               onClick={() => setStatusFilter(f)}
+              disabled={loading}
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 statusFilter === f
                   ? 'bg-saffron-500 text-white'
                   : 'text-gray-500 hover:bg-beige-100'
               }`}
             >
-              {f === 'SHIPMENT_DISPATCHED' ? 'Dispatched' : f}
+              {f === 'SHIPPED' ? 'Dispatched' : f}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Order grid */}
-      {filtered.length ? (
+      {/* Main Content Area */}
+      {loading ? (
+        <div className="py-24 text-center flex flex-col items-center justify-center gap-2">
+          <Loader2 className="w-8 h-8 animate-spin text-saffron-500" />
+          <p className="text-sm text-gray-400 font-body">Fetching shipments...</p>
+        </div>
+      ) : error ? (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center max-w-md mx-auto space-y-3">
+          <AlertCircle className="w-8 h-8 text-red-500 mx-auto" />
+          <p className="text-sm font-medium text-red-800">{error}</p>
+        </div>
+      ) : filtered.length ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-          {filtered.map((order) => <OrderCard key={order.id} order={order} />)}
+          {filtered.map((order) => (
+            <OrderCard key={order.id} order={order} />
+          ))}
         </div>
       ) : (
         <div className="py-16 text-center">

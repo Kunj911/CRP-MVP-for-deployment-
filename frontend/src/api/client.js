@@ -14,8 +14,8 @@ import useAuthStore from '../store/authStore'
 import { toast } from 'sonner'
 import Cookies from 'js-cookie'
 
-// Use environment variable for the base URL, default to local FastAPI backend
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+// Use relative API base URL to leverage Nginx reverse proxy
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
 /**
  * Decode base64 JWT payload to check expiry.
@@ -58,12 +58,13 @@ apiClient.interceptors.request.use(
         const isNearExpiry = (payload.exp * 1000) - Date.now() < 30000 // 30s buffer
         if (isNearExpiry) {
           try {
-            const res = await axios.post(`${API_BASE_URL}/api/v1/auth/refresh`, null, {
+            const res = await axios.post(`${API_BASE_URL}/auth/refresh`, null, {
               withCredentials: true,
             })
             accessToken = res.data.access_token
             setAccessToken(accessToken)
           } catch (err) {
+            accessToken = null
             logout()
           }
         }
@@ -135,7 +136,7 @@ apiClient.interceptors.response.use(
 
       try {
         // Attempt to refresh — cookie is sent automatically
-        const res = await axios.post(`${API_BASE_URL}/api/v1/auth/refresh`, null, {
+        const res = await axios.post(`${API_BASE_URL}/auth/refresh`, null, {
           withCredentials: true,
         })
 

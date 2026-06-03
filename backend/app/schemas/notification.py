@@ -23,6 +23,12 @@ class NotificationChannel(str, Enum):
     EMAIL     = "EMAIL"
     WHATSAPP  = "WHATSAPP"
     SMS       = "SMS"
+    order     = "order"
+    document  = "document"
+    shipment  = "shipment"
+    system    = "system"
+    qa        = "qa"
+    payment   = "payment"
 
 
 class DeliveryStatus(str, Enum):
@@ -52,10 +58,16 @@ class NotificationResponse(BaseModel):
     id: int
     order_id: int
     user_id: int
-    notification_type: Optional[NotificationChannel]
+    title: Optional[str] = None
+    notification_type: NotificationChannel
     message: Optional[str]
+    is_read: bool
     delivery_status: DeliveryStatus
     sent_at: Optional[datetime]
     created_at: datetime
+    updated_at: datetime
+    related_order_id: Optional[int] = None
+    related_document_id: Optional[int] = None
 
     model_config = {"from_attributes": True}
+

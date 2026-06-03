@@ -19,7 +19,6 @@ from app.database.connection import Base
 
 if TYPE_CHECKING:
     from app.models.order import Order
-    from app.models.qa_report import QAReport
     from app.models.user import User
 
 
@@ -56,6 +55,17 @@ class Document(Base):
             "LAB_REPORT",
             "PACKING_LIST",
             "OTHER",
+            "invoice",
+            "bill_of_lading",
+            "lab_report",
+            "packing_list",
+            "certificate_of_analysis",
+            "phytosanitary_certificate",
+            "product_specification",
+            "insurance_certificate",
+            "purchase_order",
+            "certificate_of_origin",
+            "other",
             name="document_type_enum",
         ),
         nullable=False,
@@ -66,19 +76,57 @@ class Document(Base):
     file_size: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     storage_key: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
 
+    status: Mapped[str] = mapped_column(
+        Enum(
+            "draft",
+            "uploaded",
+            "under_review",
+            "approved",
+            "rejected",
+            "archived",
+            name="document_status_enum",
+        ),
+        default="uploaded",
+        nullable=False,
+        index=True,
+    )
+    visibility: Mapped[str] = mapped_column(
+        Enum(
+            "internal",
+            "customer_visible",
+            "admin_only",
+            name="document_visibility_enum",
+        ),
+        default="internal",
+        nullable=False,
+        index=True,
+    )
+    reviewed_by: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.user_id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    is_deleted: Mapped[bool] = mapped_column(default=False, nullable=False, index=True)
+
     # ── Timestamp ─────────────────────────────────────────────────────────────
     uploaded_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
     # ── Relationships ─────────────────────────────────────────────────────────
     order: Mapped["Order"] = relationship("Order", back_populates="documents")
     uploader: Mapped[Optional["User"]] = relationship(
-        "User", back_populates="documents_uploaded"
+        "User", back_populates="documents_uploaded", foreign_keys=[uploaded_by]
     )
-    # A QA report may reference this document as its report attachment
-    qa_reports: Mapped[List["QAReport"]] = relationship(
-        "QAReport", back_populates="report_document", lazy="select"
+    reviewer: Mapped[Optional["User"]] = relationship(
+        "User", foreign_keys=[reviewed_by]
     )
 
     def __repr__(self) -> str:
@@ -86,3 +134,4 @@ class Document(Base):
             f"<Document id={self.id} order_id={self.order_id} "
             f"type='{self.document_type}'>"
         )
+

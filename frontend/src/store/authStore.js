@@ -16,6 +16,7 @@
 
 import { create } from 'zustand'
 import Cookies from 'js-cookie'
+import useNotificationStore from './notificationStore'
 
 const useAuthStore = create((set, get) => ({
   // ── State ──────────────────────────────────────────────────────────────────
@@ -39,6 +40,8 @@ const useAuthStore = create((set, get) => ({
    */
   logout: () => {
     Cookies.remove('session_exists')
+    // Stop background notification polling to prevent memory leaks and 401 spam
+    useNotificationStore.getState().stopPolling()
     set({ user: null, accessToken: null, isSessionLoading: false })
   },
 

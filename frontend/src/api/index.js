@@ -28,9 +28,11 @@ export const authApi = {
 export const ordersApi = {
   list: (params) => apiClient.get('/orders', { params }), // ?page=1&limit=10&status=ACTIVE
   create: (data) => apiClient.post('/orders', data),
+  createWithNewCustomer: (data) => apiClient.post('/orders/with-new-customer', data),
   getById: (orderId) => apiClient.get(`/orders/${orderId}`),
   update: (orderId, data) => apiClient.patch(`/orders/${orderId}`, data),
   getTimeline: (orderId) => apiClient.get(`/orders/${orderId}/timeline`),
+  getDashboardStats: () => apiClient.get('/orders/dashboard/stats'),
 }
 
 /**
@@ -64,7 +66,7 @@ export const uploadsApi = {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('order_id', orderId)
-    formData.append('category', category)
+    formData.append('media_type', category)
     
     return apiClient.post('/upload/photo', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -75,7 +77,7 @@ export const uploadsApi = {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('order_id', orderId)
-    formData.append('doc_type', docType)
+    formData.append('document_type', docType)
     
     return apiClient.post('/upload/document', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -84,6 +86,7 @@ export const uploadsApi = {
 
   listMediaByOrder: (orderId) => apiClient.get(`/orders/${orderId}/media`),
   deleteMedia: (fileId) => apiClient.delete(`/media/${fileId}`),
+  getDocumentChecklist: (orderId) => apiClient.get(`/orders/${orderId}/document-checklist`),
 }
 
 /**
@@ -92,6 +95,8 @@ export const uploadsApi = {
 export const documentsApi = {
   listByOrder: (orderId) => apiClient.get(`/orders/${orderId}/documents`),
   delete: (docId) => apiClient.delete(`/documents/${docId}`),
+  approve: (docId) => apiClient.post(`/documents/${docId}/approve`),
+  reject: (docId, remarks) => apiClient.post(`/documents/${docId}/reject`, { remarks }),
   
   // Custom helper for secure downloads (assumes backend handles redirect or streaming)
   download: (docId) => apiClient.get(`/documents/${docId}/download`, {
@@ -113,7 +118,8 @@ export const qaApi = {
  */
 export const notificationsApi = {
   list: (params) => apiClient.get('/notifications', { params }),
-  markAsRead: (id) => apiClient.patch(`/notifications/${id}/read`),
+  markAsRead: (id) => apiClient.post(`/notifications/${id}/read`),
+  markAllRead: () => apiClient.post('/notifications/read-all'),
 }
 
 /**

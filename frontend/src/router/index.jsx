@@ -1,16 +1,18 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import useAuthStore from '../store/authStore'
 import AppShell from '../components/layout/AppShell'
-import LoginPage from '../pages/auth/LoginPage'
-import AdminDashboard from '../pages/dashboard/AdminDashboard'
-import CustomerDashboard from '../pages/dashboard/CustomerDashboard'
-import OrdersListPage from '../pages/orders/OrdersListPage'
-import OrderDetailPage from '../pages/orders/OrderDetailPage'
-import CreateOrderPage from '../pages/orders/CreateOrderPage'
-import UploadPage from '../pages/uploads/UploadPage'
-import DocumentVaultPage from '../pages/documents/DocumentVaultPage'
-import NotificationsPage from '../pages/notifications/NotificationsPage'
-import SettingsPage from '../pages/settings/SettingsPage'
+
+const LoginPage = lazy(() => import('../pages/auth/LoginPage'))
+const AdminDashboard = lazy(() => import('../pages/dashboard/AdminDashboard'))
+const CustomerDashboard = lazy(() => import('../pages/dashboard/CustomerDashboard'))
+const OrdersListPage = lazy(() => import('../pages/orders/OrdersListPage'))
+const OrderDetailPage = lazy(() => import('../pages/orders/OrderDetailPage'))
+const CreateOrderPage = lazy(() => import('../pages/orders/CreateOrderPage'))
+const UploadPage = lazy(() => import('../pages/uploads/UploadPage'))
+const DocumentVaultPage = lazy(() => import('../pages/documents/DocumentVaultPage'))
+const NotificationsPage = lazy(() => import('../pages/notifications/NotificationsPage'))
+const SettingsPage = lazy(() => import('../pages/settings/SettingsPage'))
 
 /* Protected route — redirects to /login if no token */
 function ProtectedRoute() {
@@ -41,30 +43,38 @@ export { RoleRoute }
 export default function AppRouter() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route element={<ProtectedRoute />}>
-          <Route element={<AppShell />}>
-            <Route index element={<DashboardRouter />} />
-            <Route path="orders" element={<OrdersListPage />} />
-            <Route path="orders/new" element={
-              <RoleRoute allow={['SUPER_ADMIN','ADMIN']}>
-                <CreateOrderPage />
-              </RoleRoute>
-            } />
-            <Route path="orders/:orderId" element={<OrderDetailPage />} />
-            <Route path="uploads" element={
-              <RoleRoute allow={['SUPER_ADMIN','ADMIN','WAREHOUSE','QA','DOCUMENTATION']}>
-                <UploadPage />
-              </RoleRoute>
-            } />
-            <Route path="documents" element={<DocumentVaultPage />} />
-            <Route path="notifications" element={<NotificationsPage />} />
-            <Route path="settings" element={<SettingsPage />} />
+      <Suspense
+        fallback={
+          <div className="min-h-screen bg-beige-100 flex items-center justify-center">
+            <div className="w-10 h-10 border-3 border-saffron-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        }
+      >
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route element={<ProtectedRoute />}>
+            <Route element={<AppShell />}>
+              <Route index element={<DashboardRouter />} />
+              <Route path="orders" element={<OrdersListPage />} />
+              <Route path="orders/new" element={
+                <RoleRoute allow={['SUPER_ADMIN','ADMIN']}>
+                  <CreateOrderPage />
+                </RoleRoute>
+              } />
+              <Route path="orders/:orderId" element={<OrderDetailPage />} />
+              <Route path="uploads" element={
+                <RoleRoute allow={['SUPER_ADMIN','ADMIN','WAREHOUSE','QA','DOCUMENTATION']}>
+                  <UploadPage />
+                </RoleRoute>
+              } />
+              <Route path="documents" element={<DocumentVaultPage />} />
+              <Route path="notifications" element={<NotificationsPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+            </Route>
           </Route>
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   )
 }

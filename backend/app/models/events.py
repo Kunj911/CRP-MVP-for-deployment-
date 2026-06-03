@@ -21,15 +21,12 @@ def _get_current_user_id() -> int:
 
 @event.listens_for(Order, "after_update")
 def receive_order_after_update(mapper, connection, target):
-    """Automatically log when an order status or active stage changes."""
+    """Automatically log when an order status changes."""
     state = event.inspect(target)
     
     changes = []
-    if state.attrs.status.history.has_changes():
-        changes.append(f"Status changed to {target.status}")
-        
-    if state.attrs.active_stage.history.has_changes():
-        changes.append(f"Active stage changed to {target.active_stage}")
+    if state.attrs.shipment_status.history.has_changes():
+        changes.append(f"Status changed to {target.shipment_status}")
         
     if changes:
         description = " | ".join(changes)
@@ -59,6 +56,7 @@ def receive_milestone_after_update(mapper, connection, target):
                 "target_table": "milestones",
                 "target_id": target.id,
                 "order_id": target.order_id,
-                "description": f"Milestone '{target.milestone_type}' status updated to {target.status}"
+                "description": f"Milestone '{target.stage_name}' status updated to {target.status}"
             }
         )
+

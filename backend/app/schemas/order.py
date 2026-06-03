@@ -22,6 +22,7 @@ from typing import Literal, Optional
 from enum import Enum
 
 from pydantic import BaseModel, Field, field_validator, model_validator
+from app.schemas.customer import CustomerOnboard
 
 
 # ── Shipment status enum ──────────────────────────────────────────────────────
@@ -165,6 +166,7 @@ class OrderListItem(BaseModel):
     order_code: str
     customer_id: int
     company_name: str          # denormalized from customer join
+    destination_country: Optional[str] = None  # denormalized from customer join
     product_name: str
     quantity: Optional[Decimal]
     unit: Optional[str]
@@ -221,3 +223,34 @@ class OrderFilters(BaseModel):
     to_date: Optional[date] = Field(None, description="Filter orders created on or before this date")
     page: int = Field(default=1, ge=1)
     per_page: int = Field(default=20, ge=1, le=100)
+
+
+class OrderCreateFields(BaseModel):
+    product_name: str = Field(..., min_length=1, max_length=200)
+    quantity: Optional[Decimal] = Field(None, gt=0, decimal_places=2)
+    unit: Optional[str] = Field(None, max_length=20)
+    expected_dispatch_date: Optional[date] = None
+    expected_delivery_date: Optional[date] = None
+    notes: Optional[str] = Field(None, max_length=2000)
+
+    @field_validator("product_name")
+    @classmethod
+    def strip_product_name(cls, v: str) -> str:
+        return v.strip()
+
+    @model_validator(mode="after")
+    def validate_dates(self) -> "OrderCreateFields":
+        if (
+            self.expected_dispatch_date
+            and self.expected_delivery_date
+            and self.expected_delivery_date < self.expected_dispatch_date
+        ):
+            raise ValueError(
+                "expected_delivery_date cannot be before expected_dispatch_date"
+            )
+        return self
+
+
+class OrderWithNewCustomerCreate(BaseModel):
+    customer: CustomerOnboard
+    order: OrderCreateFields

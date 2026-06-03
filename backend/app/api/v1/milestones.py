@@ -226,4 +226,5 @@ def _assert_customer_order_access(
         raise NotFoundException("Order", order_id)
 
     if order.customer_id != current_user.customer_id:
-        raise ForbiddenException("You do not have access to this order's milestones")
+        from app.core.exceptions import NotFoundException
+        raise NotFoundException("Order", order_id)

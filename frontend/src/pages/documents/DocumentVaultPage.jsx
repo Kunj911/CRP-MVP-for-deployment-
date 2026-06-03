@@ -1,33 +1,80 @@
-import { useState } from 'react'
-import { Search, Filter, FolderOpen } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Search, FolderOpen, Loader2 } from 'lucide-react'
 import DocumentVault from '../../components/documents/DocumentVault'
-
-// Demo data
-const DEMO_ORDERS_WITH_DOCS = [
-  {
-    order_code: 'ORD-2025-001',
-    customer_name: 'Acme Spices LLC',
-    commodity: 'Turmeric Powder',
-    documents: [
-      { id:1, document_type:'INVOICE',  file_name:'invoice_ORD2025001.pdf', uploaded_at:'2025-05-12T10:00:00Z' },
-      { id:2, document_type:'COA',      file_name:'coa_turmeric_lot42.pdf', uploaded_at:'2025-05-13T14:00:00Z' },
-    ]
-  },
-  {
-    order_code: 'ORD-2025-002',
-    customer_name: 'Spice World GmbH',
-    commodity: 'Cumin Seeds',
-    documents: [
-      { id:3, document_type:'BL_COPY',  file_name:'bl_7749294.pdf', uploaded_at:'2025-05-14T09:30:00Z' },
-      { id:4, document_type:'PACKING_LIST', file_name:'packing_list_v2.xlsx', uploaded_at:'2025-05-14T09:45:00Z' },
-    ]
-  }
-]
+import { ordersApi, documentsApi } from '../../api'
 
 export default function DocumentVaultPage() {
   const [search, setSearch] = useState('')
+  const [ordersWithDocs, setOrdersWithDocs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  const filtered = DEMO_ORDERS_WITH_DOCS.filter(o => 
+  useEffect(() => {
+    let isMounted = true
+    async function loadVault() {
+      try {
+        setLoading(true)
+        setError(null)
+        const ordersRes = await ordersApi.list({ page: 1, per_page: 100 })
+        const ordersList = Array.isArray(ordersRes.data?.data) ? ordersRes.data.data : []
+        
+        const docsPromises = ordersList.map(async (order) => {
+          try {
+            const docsRes = await documentsApi.listByOrder(order.id)
+            const documents = Array.isArray(docsRes.data?.data) ? docsRes.data.data : []
+            return {
+              order_code: order.order_code,
+              customer_name: order.company_name || order.customer?.company_name || order.customer_name || 'N/A',
+              commodity: order.product_name || order.commodity_name || 'N/A',
+              documents: documents,
+            }
+          } catch (err) {
+            console.error(`Error loading docs for order ${order.id}:`, err)
+            return null
+          }
+        })
+        
+        const results = await Promise.all(docsPromises)
+        const filteredResults = results.filter((res) => res !== null && res.documents.length > 0)
+        
+        if (isMounted) {
+          setOrdersWithDocs(filteredResults)
+        }
+      } catch (err) {
+        console.error('Error loading document vault:', err)
+        if (isMounted) {
+          setError('Failed to load document vault.')
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false)
+        }
+      }
+    }
+    loadVault()
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  const handleDownload = async (doc) => {
+    try {
+      const response = await documentsApi.download(doc.id)
+      const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/octet-stream' })
+      const link = document.createElement('a')
+      link.href = window.URL.createObjectURL(blob)
+      link.download = doc.file_name || 'document.pdf'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(link.href)
+    } catch (error) {
+      console.error('Download failed:', error)
+      alert('Failed to download file.')
+    }
+  }
+
+  const filtered = ordersWithDocs.filter(o => 
     o.order_code.toLowerCase().includes(search.toLowerCase()) ||
     o.customer_name.toLowerCase().includes(search.toLowerCase())
   )
@@ -49,11 +96,21 @@ export default function DocumentVaultPage() {
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by order or customer…"
           className="flex-1 text-sm text-gray-700 placeholder-gray-400 outline-none bg-transparent font-body"
+          disabled={loading}
         />
       </div>
 
       {/* Orders with Docs */}
-      {filtered.length > 0 ? (
+      {loading ? (
+        <div className="py-24 text-center flex flex-col items-center justify-center gap-2">
+          <Loader2 className="w-8 h-8 animate-spin text-saffron-500" />
+          <p className="text-sm text-gray-400 font-body">Loading document vault...</p>
+        </div>
+      ) : error ? (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center max-w-md mx-auto">
+          <p className="text-sm font-medium text-red-800">{error}</p>
+        </div>
+      ) : filtered.length > 0 ? (
         <div className="space-y-5">
           {filtered.map(order => (
             <div key={order.order_code} className="bg-white rounded-xl border border-beige-200 shadow-card overflow-hidden">
@@ -69,7 +126,7 @@ export default function DocumentVaultPage() {
               <div className="p-4 bg-white">
                 <DocumentVault 
                   documents={order.documents} 
-                  onDownload={(doc) => alert(`Secure download initiated for ${doc.file_name}`)}
+                  onDownload={handleDownload}
                 />
               </div>
             </div>

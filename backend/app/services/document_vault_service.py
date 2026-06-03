@@ -60,7 +60,7 @@ def get_document_for_download(
         - If the storage is cloud (S3/Cloudinary), returns the URL and False.
     """
     # 1. Fetch document and related order
-    doc = db.query(Document).filter(Document.id == doc_id).first()
+    doc = db.query(Document).filter(Document.id == doc_id, Document.is_deleted == False).first()
     if not doc:
         raise NotFoundException("Document", doc_id)
 
@@ -68,7 +68,7 @@ def get_document_for_download(
     if not order:
         raise NotFoundException("Order", doc.order_id)
 
-    # 2. Access Control: Customers can only download docs for their own orders.
+    # 2. Access Control: Customers can only download docs for their own orders, and they must be approved and customer_visible.
     # Staff (ADMIN, WAREHOUSE, QA, DOCS) can download any document.
     if current_user.role == "CUSTOMER":
         if order.customer_id != current_user.customer_id:
@@ -76,7 +76,13 @@ def get_document_for_download(
                 "Unauthorized download attempt: user_id=%s doc_id=%s ip=%s",
                 current_user.id, doc_id, ip_address or "unknown"
             )
-            raise ForbiddenException("You do not have permission to download this document.")
+            raise NotFoundException("Document", doc_id)
+        if doc.status != "approved" or doc.visibility != "customer_visible":
+            logger.warning(
+                "Unauthorized download attempt: user_id=%s doc_id=%s status=%s visibility=%s ip=%s",
+                current_user.id, doc_id, doc.status, doc.visibility, ip_address or "unknown"
+            )
+            raise ForbiddenException("You do not have access to download this document")
 
     # 3. DATA-002: Enhanced audit logging with IP and context
     _log_audit(

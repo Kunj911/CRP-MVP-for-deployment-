@@ -242,6 +242,17 @@ def login(
     # 7. Clear brute-force counters on successful login
     _clear_failed_attempts(normalized_email, ip_address)
 
+    try:
+        from app.services.notification_service import send_login_alert
+        send_login_alert(
+            user=user,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            login_time=datetime.now(UTC),
+        )
+    except Exception as exc:
+        logger.error("Login alert dispatch failed for user_id=%s: %s", user.id, exc)
+
     logger.info("User logged in: user_id=%s role=%s", user.id, user.role)
 
     return {
@@ -522,7 +533,7 @@ def verify_mfa_login(user_id: int, otp_code: str, db: Session,
     refresh_token = create_refresh_token(user_id=user.id)
 
     hashed_refresh = hash_token(refresh_token)
-    expires_at = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    expires_at = datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     session = LoginSession(
         user_id=user.id,
         jwt_token=hashed_refresh,

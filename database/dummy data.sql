@@ -1,4 +1,4 @@
-﻿use live_trace_dashboard;
+use live_trace_dashboard;
 # Live-Trace Export Dashboard
 -- =========================================================
 -- CUSTOMERS
@@ -59,7 +59,7 @@ VALUES
     'Kunal Mehta',
     'admin@livetrace.com',
     '+91-9876543210',
-    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/HS.V/Ym',
+    '$2b$12$1o0mE2f1z66HovEgev7VTOLerJ3aT4Z0ER1PxqYpjBpvrkwzD.fMe',
     'SUPER_ADMIN',
     NULL
 ),
@@ -67,7 +67,7 @@ VALUES
     'Ravi Patel',
     'warehouse@livetrace.com',
     '+91-9988776655',
-    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/HS.V/Ym',
+    '$2b$12$kb3Dd7urSqq9WiQoEXcFTeqmqn/Mz7eovdsdbGHEl7VZn7o2lVbgW',
     'WAREHOUSE',
     NULL
 ),
@@ -75,7 +75,7 @@ VALUES
     'Priya Shah',
     'qa@livetrace.com',
     '+91-8877665544',
-    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/HS.V/Ym',
+    '$2b$12$Vy21ofc3JqMni1jDxreeLujgThkhWW1u.ehp0RR8u0t3wJmwOYl96',
     'QA',
     NULL
 ),
@@ -83,7 +83,7 @@ VALUES
     'Arjun Desai',
     'docs@livetrace.com',
     '+91-7766554433',
-    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/HS.V/Ym',
+    '$2b$12$.M0KRIpW1qlXzL9UeW4JMuD05pG74ECYc9FQTiS/aixYc06VSKBTS',
     'DOCUMENTATION',
     NULL
 ),
@@ -91,7 +91,7 @@ VALUES
     'Michael Carter',
     'client1@spiceworld.com',
     '+44-7744552233',
-    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/HS.V/Ym',
+    '$2b$12$ve6hPNpudtQnWkDMOMYzxuW8OmjaV2A/bM16QWQtGmVZiMBGpfGGS',
     'CUSTOMER',
     1
 ),
@@ -99,7 +99,7 @@ VALUES
     'Emily Watson',
     'client2@globalherb.com',
     '+1-202-555-0147',
-    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/HS.V/Ym',
+    '$2b$12$Qdofpg5leqUSq6dThCmydO7/sPpM2Tn/f7S3mftdBvZIodNLzCynu',
     'CUSTOMER',
     2
 );
@@ -314,41 +314,8 @@ VALUES
     4
 );
 
--- =========================================================
--- QA REPORTS
--- =========================================================
 
-INSERT INTO qa_reports (
-    order_id,
-    moisture_level,
-    purity_percentage,
-    contamination_status,
-    remarks,
-    report_document_id,
-    verified_by,
-    verified_at
-)
-VALUES
-(
-    1,
-    8.50,
-    98.90,
-    'CLEAR',
-    'Excellent export quality turmeric batch',
-    1,
-    3,
-    NOW()
-),
-(
-    2,
-    9.10,
-    97.20,
-    'CLEAR',
-    'Black pepper meets export standards',
-    3,
-    3,
-    NOW()
-);
+
 
 -- =========================================================
 -- NOTIFICATIONS
@@ -417,7 +384,7 @@ VALUES
 (
     3,
     'UPLOAD_QA_REPORT',
-    'qa_reports',
+    'documents',
     1,
     'Uploaded QA report for turmeric batch'
 ),
@@ -429,31 +396,8 @@ VALUES
     'Uploaded BL copy for cardamom shipment'
 );
 
--- =========================================================
--- ORDER COMMENTS
--- =========================================================
 
-INSERT INTO order_comments (
-    order_id,
-    user_id,
-    comment
-)
-VALUES
-(
-    1,
-    2,
-    'Packaging material inspection completed successfully.'
-),
-(
-    2,
-    3,
-    'Awaiting final microbiological test results.'
-),
-(
-    3,
-    4,
-    'Shipping documents uploaded and verified.'
-);
+
 
 -- =========================================================
 -- LOGIN SESSIONS

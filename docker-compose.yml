@@ -71,6 +71,11 @@ services:
         condition: service_healthy
       clamav:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     volumes:
       - shared_uploads:/app/uploads
 
@@ -90,6 +95,23 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Celery Beat Scheduler for Periodic Tasks
+  celery_beat:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: livetrace_beat
+    restart: always
+    command: celery -A app.core.celery_app.celery_app beat --loglevel=info
+    env_file:
+      - .env.production
+    environment:
+      - DB_HOST=db
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
       redis:
         condition: service_healthy
 

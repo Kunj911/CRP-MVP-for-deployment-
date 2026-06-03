@@ -52,6 +52,7 @@ from app.models.document import Document
 from app.models.media_file import MediaFile
 from app.models.order import Order
 from app.models.user import User
+from app.models.order_document_requirement import OrderDocumentRequirement
 from app.schemas.upload import (
     DocumentResponse,
     DocumentType,
@@ -222,7 +223,7 @@ async def upload_photo(
     # LOGIC-001: Verify order ownership for CUSTOMER role
     if current_user.role == "CUSTOMER":
         if order.customer_id != current_user.customer_id:
-            raise ForbiddenException("You do not have access to this order")
+            raise NotFoundException("Order", order_id)
 
     # 1. Stream file with early size abort
     temp_file, original_size = await _stream_to_tempfile(
@@ -359,7 +360,7 @@ async def upload_document(
     # LOGIC-001: Verify order ownership for CUSTOMER role
     if current_user.role == "CUSTOMER":
         if order.customer_id != current_user.customer_id:
-            raise ForbiddenException("You do not have access to this order")
+            raise NotFoundException("Order", order_id)
 
     # 1. Stream file with early size abort
     temp_file, total_size = await _stream_to_tempfile(
@@ -428,9 +429,61 @@ async def upload_document(
             file_size=total_size,
             storage_key=destination,
             uploaded_by=current_user.id,
+            status="uploaded",
+            visibility="internal",
         )
         db.add(doc_record)
         db.flush()
+
+        # Update OrderDocumentRequirement
+        req = db.query(OrderDocumentRequirement).filter(
+            OrderDocumentRequirement.order_id == order_id,
+            OrderDocumentRequirement.document_type == document_type.value
+        ).first()
+        if not req:
+            req = OrderDocumentRequirement(
+                order_id=order_id,
+                document_type=document_type.value,
+                required=False
+            )
+            db.add(req)
+        req.uploaded = True
+        req.uploaded_at = func.now()
+        req.document_id = doc_record.id
+        req.approved = False
+        req.approved_at = None
+        req.approved_by = None
+
+        # Log OrderEvent
+        from app.models.order_event import OrderEvent
+        event = OrderEvent(
+            order_id=order_id,
+            event_type="document_uploaded",
+            description=f"Document '{doc_record.file_name}' ({doc_record.document_type}) uploaded by {current_user.full_name}."
+        )
+        db.add(event)
+
+        # In-app notifications to reviewers (QA, Admin)
+        reviewers = db.query(User).filter(
+            User.role.in_(["QA", "ADMIN", "SUPER_ADMIN"]),
+            User.is_active == True
+        ).all()
+        for r in reviewers:
+            from app.services.notification_service import create_in_app_notification
+            create_in_app_notification(
+                db=db,
+                user_id=r.id,
+                order_id=order_id,
+                title="Document Review Required",
+                message=f"Document '{doc_record.file_name}' ({doc_record.document_type}) has been uploaded and requires review.",
+                notification_type="document",
+                related_order_id=order_id,
+                related_document_id=doc_record.id
+            )
+
+        # Trigger async email
+        from app.tasks.document_tasks import send_document_uploaded_email
+        send_document_uploaded_email.delay(order_id, doc_record.id)
 
         # 10. Audit log
         _log_audit(
@@ -481,13 +534,12 @@ def get_order_media(
     media_type: Optional[MediaType] = None,
 ) -> List[MediaFileResponse]:
     """Return all media files for an order, optionally filtered by type."""
-    _get_order_or_404(order_id, db)
+    order = _get_order_or_404(order_id, db)
 
     # Customer scoping
     if current_user.role == "CUSTOMER":
-        order = db.query(Order).filter(Order.id == order_id).first()
-        if order and order.customer_id != current_user.customer_id:
-            raise ForbiddenException("You do not have access to this order's media")
+        if order.customer_id != current_user.customer_id:
+            raise NotFoundException("Order", order_id)
 
     query = db.query(MediaFile).filter(MediaFile.order_id == order_id)
     if media_type:
@@ -506,15 +558,23 @@ def get_order_documents(
     document_type: Optional[DocumentType] = None,
 ) -> List[DocumentResponse]:
     """Return all documents for an order, optionally filtered by type."""
-    _get_order_or_404(order_id, db)
+    order = _get_order_or_404(order_id, db)
 
     # Customer scoping
     if current_user.role == "CUSTOMER":
-        order = db.query(Order).filter(Order.id == order_id).first()
-        if order and order.customer_id != current_user.customer_id:
-            raise ForbiddenException("You do not have access to this order's documents")
+        if order.customer_id != current_user.customer_id:
+            raise NotFoundException("Order", order_id)
 
-    query = db.query(Document).filter(Document.order_id == order_id)
+    query = db.query(Document).filter(
+        Document.order_id == order_id,
+        Document.is_deleted == False
+    )
+    if current_user.role == "CUSTOMER":
+        query = query.filter(
+            Document.status == "approved",
+            Document.visibility == "customer_visible"
+        )
+        
     if document_type:
         query = query.filter(Document.document_type == document_type.value)
 
@@ -576,11 +636,11 @@ def delete_document(
     current_user: User,
     db: Session,
 ) -> None:
-    """Delete a document (DB record + storage). Admin or Docs team."""
+    """Soft delete a document by marking is_deleted=True. Admin or Docs team."""
     if current_user.role not in {*_DELETE_ROLES, "DOCUMENTATION"}:
         raise ForbiddenException("Only ADMIN or DOCUMENTATION team can delete documents")
 
-    doc = db.query(Document).filter(Document.id == doc_id).first()
+    doc = db.query(Document).filter(Document.id == doc_id, Document.is_deleted == False).first()
     if not doc:
         raise NotFoundException("Document", doc_id)
 
@@ -590,16 +650,29 @@ def delete_document(
         if order.customer_id != current_user.customer_id:
             raise ForbiddenException("You do not have access to this document")
 
-    storage = get_storage()
-    try:
-        # Use storage_key if present, fallback to parsing from URL
-        path = doc.storage_key
-        if not path:
-            path = doc.file_url.split("/uploads/", 1)[-1] if "/uploads/" in doc.file_url else ""
-        if path:
-            storage.delete(path)
-    except Exception as exc:
-        logger.warning("Storage delete failed for doc_id=%s: %s", doc_id, exc)
+    doc.is_deleted = True
+
+    # Update OrderDocumentRequirement
+    req = db.query(OrderDocumentRequirement).filter(
+        OrderDocumentRequirement.order_id == doc.order_id,
+        OrderDocumentRequirement.document_id == doc.id
+    ).first()
+    if req:
+        req.uploaded = False
+        req.approved = False
+        req.uploaded_at = None
+        req.approved_at = None
+        req.approved_by = None
+        req.document_id = None
+
+    # Log OrderEvent
+    from app.models.order_event import OrderEvent
+    event = OrderEvent(
+        order_id=doc.order_id,
+        event_type="document_deleted",
+        description=f"Document '{doc.file_name}' ({doc.document_type}) deleted by {current_user.full_name}."
+    )
+    db.add(event)
 
     _log_audit(
         db=db,
@@ -608,8 +681,171 @@ def delete_document(
         target_table="documents",
         target_id=doc_id,
         order_id=doc.order_id,
-        description=f"Document deleted: doc_id={doc_id} type={doc.document_type} file='{doc.file_name}'",
+        description=f"Document soft-deleted: doc_id={doc_id} type={doc.document_type} file='{doc.file_name}'",
     )
-    db.delete(doc)
     db.commit()
-    logger.info("Document deleted: doc_id=%s by user_id=%s", doc_id, current_user.id)
+    logger.info("Document soft-deleted: doc_id=%s by user_id=%s", doc_id, current_user.id)
+
+
+# ── Document Checklist and Approval Workflows ─────────────────────────────────
+
+def get_order_document_checklist(
+    order_id: int,
+    current_user: User,
+    db: Session,
+) -> List["OrderDocumentRequirement"]:
+    """Retrieve checklist requirements for an order with scoping for customer visibility."""
+    order = _get_order_or_404(order_id, db)
+    
+    # Customer scoping
+    if current_user.role == "CUSTOMER":
+        if order.customer_id != current_user.customer_id:
+            raise NotFoundException("Order", order_id)
+            
+    reqs = db.query(OrderDocumentRequirement).filter(
+        OrderDocumentRequirement.order_id == order_id
+    ).all()
+    
+    # Hide document details for customers if not approved/visible
+    if current_user.role == "CUSTOMER":
+        for r in reqs:
+            if r.document:
+                if r.document.status != "approved" or r.document.visibility != "customer_visible" or r.document.is_deleted:
+                    # Clear direct document linkages to hide unapproved files
+                    r.document_id = None
+                    r.uploaded = False
+                    r.approved = False
+                    r.uploaded_at = None
+                    r.approved_at = None
+                    
+    return reqs
+
+
+def approve_document(doc_id: int, current_user: User, db: Session) -> Document:
+    """Approve an uploaded document, update requirement, and dispatch alerts."""
+    if current_user.role not in {"QA", "ADMIN", "SUPER_ADMIN"}:
+        raise ForbiddenException("Only QA or ADMIN can approve documents")
+        
+    doc = db.query(Document).filter(Document.id == doc_id, Document.is_deleted == False).first()
+    if not doc:
+        raise NotFoundException("Document", doc_id)
+        
+    doc.status = "approved"
+    doc.visibility = "customer_visible"  # Auto-mark as customer visible on approval
+    doc.reviewed_by = current_user.id
+    doc.reviewed_at = func.now()
+    
+    # Update checklist requirement
+    req = db.query(OrderDocumentRequirement).filter(
+        OrderDocumentRequirement.order_id == doc.order_id,
+        OrderDocumentRequirement.document_type == doc.document_type
+    ).first()
+    
+    if req:
+        req.approved = True
+        req.approved_at = func.now()
+        req.approved_by = current_user.id
+        req.uploaded = True
+        req.document_id = doc.id
+        
+    # Log OrderEvent
+    from app.models.order_event import OrderEvent
+    event = OrderEvent(
+        order_id=doc.order_id,
+        event_type="document_approved",
+        description=f"Document '{doc.file_name}' ({doc.document_type}) approved by {current_user.full_name}."
+    )
+    db.add(event)
+    
+    # In-app notification to customer contacts
+    order = doc.order
+    customer_users = db.query(User).filter(
+        User.customer_id == order.customer_id,
+        User.role == "CUSTOMER",
+        User.is_active == True
+    ).all()
+    
+    for user in customer_users:
+        from app.services.notification_service import create_in_app_notification
+        create_in_app_notification(
+            db=db,
+            user_id=user.id,
+            order_id=doc.order_id,
+            title="Document Approved",
+            message=f"Your document '{doc.file_name}' has been approved.",
+            notification_type="document",
+            related_order_id=doc.order_id,
+            related_document_id=doc.id
+        )
+        
+    # Trigger Email Celery task
+    from app.tasks.document_tasks import send_document_approved_email
+    send_document_approved_email.delay(doc.order_id, doc.id)
+    
+    db.commit()
+    db.refresh(doc)
+    return doc
+
+
+def reject_document(doc_id: int, remarks: str, current_user: User, db: Session) -> Document:
+    """Reject an uploaded document, update checklist, and send alerts for revision."""
+    if current_user.role not in {"QA", "ADMIN", "SUPER_ADMIN"}:
+        raise ForbiddenException("Only QA or ADMIN can reject documents")
+        
+    doc = db.query(Document).filter(Document.id == doc_id, Document.is_deleted == False).first()
+    if not doc:
+        raise NotFoundException("Document", doc_id)
+        
+    doc.status = "rejected"
+    doc.reviewed_by = current_user.id
+    doc.reviewed_at = func.now()
+    
+    # Update checklist requirement
+    req = db.query(OrderDocumentRequirement).filter(
+        OrderDocumentRequirement.order_id == doc.order_id,
+        OrderDocumentRequirement.document_type == doc.document_type
+    ).first()
+    
+    if req:
+        req.approved = False
+        req.approved_at = None
+        req.approved_by = None
+        
+    # Log OrderEvent
+    from app.models.order_event import OrderEvent
+    event = OrderEvent(
+        order_id=doc.order_id,
+        event_type="document_rejected",
+        description=f"Document '{doc.file_name}' ({doc.document_type}) rejected by {current_user.full_name}. Reason: {remarks}"
+    )
+    db.add(event)
+    
+    # In-app notification to customer contacts
+    order = doc.order
+    customer_users = db.query(User).filter(
+        User.customer_id == order.customer_id,
+        User.role == "CUSTOMER",
+        User.is_active == True
+    ).all()
+    
+    for user in customer_users:
+        from app.services.notification_service import create_in_app_notification
+        create_in_app_notification(
+            db=db,
+            user_id=user.id,
+            order_id=doc.order_id,
+            title="Document Rejected",
+            message=f"Your document '{doc.file_name}' has been rejected. Reason: {remarks}",
+            notification_type="document",
+            related_order_id=doc.order_id,
+            related_document_id=doc.id
+        )
+        
+    # Trigger Email Celery task
+    from app.tasks.document_tasks import send_document_rejected_email
+    send_document_rejected_email.delay(doc.order_id, doc.id, remarks)
+    
+    db.commit()
+    db.refresh(doc)
+    return doc
+

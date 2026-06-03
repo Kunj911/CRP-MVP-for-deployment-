@@ -57,28 +57,71 @@ class MediaCategory(str, Enum):
 # ── Document Types ────────────────────────────────────────────────────────────
 
 class DocumentType(str, Enum):
-    INVOICE = "invoice"
-    BL_COPY = "bl_copy"
-    CERTIFICATE = "certificate"
-    LAB_REPORT = "lab_report"
-    PACKING_LIST = "packing_list"
-    COA = "coa"
-    OTHER = "other"
+    invoice = "invoice"
+    bill_of_lading = "bill_of_lading"
+    lab_report = "lab_report"
+    packing_list = "packing_list"
+    certificate_of_analysis = "certificate_of_analysis"
+    phytosanitary_certificate = "phytosanitary_certificate"
+    product_specification = "product_specification"
+    insurance_certificate = "insurance_certificate"
+    purchase_order = "purchase_order"
+    certificate_of_origin = "certificate_of_origin"
+    other = "other"
+
+    @classmethod
+    def _missing_(cls, value):
+        if not isinstance(value, str):
+            return None
+        val_lower = value.lower()
+        legacy_map = {
+            "bl_copy": "bill_of_lading",
+            "coa": "certificate_of_analysis",
+            "certificate": "phytosanitary_certificate",
+        }
+        mapped = legacy_map.get(val_lower, val_lower)
+        for member in cls:
+            if member.value == mapped:
+                return member
+        return None
 
 
 # ── Notification Types ────────────────────────────────────────────────────────
 
 class NotificationType(str, Enum):
-    MILESTONE_COMPLETED = "milestone_completed"
-    DOCUMENT_UPLOADED = "document_uploaded"
-    ORDER_CREATED = "order_created"
-    ORDER_DISPATCHED = "order_dispatched"
+    EMAIL = "EMAIL"
+    WHATSAPP = "WHATSAPP"
+    SMS = "SMS"
+    ORDER = "order"
+    DOCUMENT = "document"
+    SHIPMENT = "shipment"
+    SYSTEM = "system"
+    QA = "qa"
+    PAYMENT = "payment"
 
 
 class NotificationChannel(str, Enum):
-    EMAIL = "email"
-    WHATSAPP = "whatsapp"
-    SMS = "sms"
+    EMAIL = "EMAIL"
+    WHATSAPP = "WHATSAPP"
+    SMS = "SMS"
+
+
+# ── Document Checklist Requirements Matrix ────────────────────────────────────
+
+DOCUMENT_REQUIREMENTS = {
+    DocumentType.invoice: True,
+    DocumentType.purchase_order: True,
+    DocumentType.packing_list: True,
+    DocumentType.certificate_of_analysis: True,
+    DocumentType.product_specification: True,
+    DocumentType.bill_of_lading: False,
+    DocumentType.lab_report: False,
+    DocumentType.phytosanitary_certificate: False,
+    DocumentType.insurance_certificate: False,
+    DocumentType.certificate_of_origin: False,
+    DocumentType.other: False
+}
+
 
 
 # ── Audit Actions ─────────────────────────────────────────────────────────────

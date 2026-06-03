@@ -30,6 +30,7 @@ from app.schemas.upload import (
     MediaFileResponse,
     MediaType,
     UploadSummary,
+    OrderDocumentRequirementResponse,
 )
 from app.services import upload_service
 
@@ -186,6 +187,30 @@ def list_order_documents(
     )
 
 
+# ── GET /orders/{order_id}/document-checklist ─────────────────────────────────
+
+@router.get(
+    "/orders/{order_id}/document-checklist",
+    response_model=SuccessResponse[List[OrderDocumentRequirementResponse]],
+    summary="Get document checklist for an order",
+    description="Returns the structured documentation checklist requirements for an order."
+)
+def get_order_checklist(
+    order_id: int,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> SuccessResponse[List[OrderDocumentRequirementResponse]]:
+    checklist = upload_service.get_order_document_checklist(
+        order_id=order_id,
+        current_user=current_user,
+        db=db,
+    )
+    return SuccessResponse(
+        data=checklist,
+        message=f"{len(checklist)} checklist items found for order {order_id}",
+    )
+
+
 # ── DELETE /media/{media_id} ──────────────────────────────────────────────────
 
 @router.delete(
@@ -220,8 +245,8 @@ def delete_media(
     response_model=SuccessResponse[str],
     summary="Delete a document",
     description=(
-        "Permanently deletes a document from both the database and storage backend. "
-        "Requires ADMIN, SUPER_ADMIN, or DOCUMENTATION team role."
+        "Soft-deletes a document by setting is_deleted = True and resetting the order "
+        "document requirement state. Requires ADMIN, SUPER_ADMIN, or DOCUMENTATION team role."
     ),
 )
 def delete_document(
@@ -238,3 +263,4 @@ def delete_document(
         data=str(doc_id),
         message=f"Document {doc_id} deleted successfully",
     )
+

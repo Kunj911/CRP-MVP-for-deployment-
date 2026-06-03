@@ -232,40 +232,8 @@ CREATE TABLE documents (
         REFERENCES users(user_id)
 );
 
--- =========================================================
--- 7. QA REPORTS TABLE
--- =========================================================
 
-CREATE TABLE qa_reports (
-    qa_report_id INT PRIMARY KEY AUTO_INCREMENT,
 
-    order_id INT NOT NULL,
-
-    moisture_level DECIMAL(5,2),
-
-    purity_percentage DECIMAL(5,2),
-
-    contamination_status VARCHAR(100),
-
-    remarks TEXT,
-
-    report_document_id INT,
-
-    verified_by INT,
-
-    verified_at TIMESTAMP NULL,
-
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    FOREIGN KEY (order_id)
-        REFERENCES orders(order_id),
-
-    FOREIGN KEY (report_document_id)
-        REFERENCES documents(document_id),
-
-    FOREIGN KEY (verified_by)
-        REFERENCES users(user_id)
-);
 
 -- =========================================================
 -- 8. NOTIFICATIONS TABLE
@@ -326,27 +294,8 @@ CREATE TABLE audit_logs (
         REFERENCES users(user_id)
 );
 
--- =========================================================
--- 10. ORDER COMMENTS TABLE
--- =========================================================
 
-CREATE TABLE order_comments (
-    comment_id INT PRIMARY KEY AUTO_INCREMENT,
 
-    order_id INT NOT NULL,
-
-    user_id INT NOT NULL,
-
-    comment TEXT NOT NULL,
-
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    FOREIGN KEY (order_id)
-        REFERENCES orders(order_id),
-
-    FOREIGN KEY (user_id)
-        REFERENCES users(user_id)
-);
 
 -- =========================================================
 -- 11. LOGIN SESSIONS TABLE

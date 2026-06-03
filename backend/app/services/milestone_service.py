@@ -220,6 +220,7 @@ def initialize_all_milestones(
     order_id: int,
     current_user: User,
     db: Session,
+    commit: bool = True,
 ) -> List[MilestoneResponse]:
     """
     Create all 9 milestone stages for an order in sequence, all PENDING.
@@ -263,7 +264,10 @@ def initialize_all_milestones(
                 description=f"Bulk init: milestone '{m.stage_name}' created for order_id={order_id}",
             )
 
-    db.commit()
+    if commit:
+        db.commit()
+    else:
+        db.flush()
 
     # Return all milestones for the order in stage sequence
     return get_milestones_for_order(order_id=order_id, current_user=current_user, db=db)
@@ -403,15 +407,8 @@ def get_order_timeline(
     db: Session,
 ) -> OrderTimelineResponse:
     """
-    Build the full ordered timeline for an order.
-
-    Returns:
-      - All milestones sorted by STAGE_SEQUENCE
-      - overall_progress: % of COMPLETED milestones
-      - active_stage: the current IN_PROGRESS stage name
-      - Missing stages shown as gaps (frontend can render them as locked nodes)
-
-    Customers can access — access scoping done by route caller.
+    Build the full chronological timeline for an order, merging milestone steps
+    and event logs (e.g. document approvals/rejections/uploads) into one view.
     """
     order = _get_order_or_404(order_id, db)
 
@@ -422,22 +419,50 @@ def get_order_timeline(
         .all()
     )
 
-    # Sort by stage sequence
+    # Sort milestones by sequence first to compute standard progress stats
     stage_order_map = {stage.value: i for i, stage in enumerate(STAGE_SEQUENCE)}
     milestones.sort(key=lambda m: stage_order_map.get(m.stage_name, 99))
 
-    timeline_items = [_to_timeline_item(m) for m in milestones]
+    milestone_items = [_to_timeline_item(m) for m in milestones]
 
     # Compute progress stats
-    total = len(timeline_items)
-    completed = sum(1 for m in timeline_items if m.is_completed)
+    total = len(milestone_items)
+    completed = sum(1 for m in milestone_items if m.is_completed)
     overall_progress = round((completed / total * 100), 1) if total > 0 else 0.0
 
     active_stage: Optional[MilestoneStage] = None
-    for item in timeline_items:
+    for item in milestone_items:
         if item.is_active:
-            active_stage = item.stage_name
+            active_stage = MilestoneStage(item.stage_name) if item.stage_name in {s.value for s in STAGE_SEQUENCE} else None
             break
+
+    # Fetch OrderEvents
+    from app.models.order_event import OrderEvent
+    events = db.query(OrderEvent).filter(OrderEvent.order_id == order_id).all()
+    
+    event_items = []
+    for e in events:
+        event_items.append(
+            MilestoneTimelineItem(
+                id=e.id,
+                order_id=e.order_id,
+                stage_name=e.event_type,
+                stage_label=e.event_type.replace("_", " ").title(),
+                stage_index=None,
+                status=None,
+                is_active=False,
+                is_completed=True,
+                remarks=e.description,
+                completed_at=e.created_at,
+                created_at=e.created_at,
+                completer=None,
+                item_type="event"
+            )
+        )
+
+    # Merge milestones and events, then sort chronologically
+    merged_items = milestone_items + event_items
+    merged_items.sort(key=lambda x: x.completed_at or x.created_at)
 
     return OrderTimelineResponse(
         order_id=order.id,
@@ -446,5 +471,6 @@ def get_order_timeline(
         completed_stages=completed,
         overall_progress=overall_progress,
         active_stage=active_stage,
-        milestones=timeline_items,
+        milestones=merged_items,
     )
+

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>New Order Confirmed</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; color: #1f2937; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .header { background: linear-gradient(135deg, #10b981, #059669); padding: 35px 20px; text-align: center; color: white; }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 700; }
+        .content { padding: 30px; line-height: 1.6; }
+        .content p { margin: 0 0 15px 0; }
+        .details-box { background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 20px; margin: 20px 0; }
+        .details-box table { width: 100%; border-collapse: collapse; }
+        .details-box td { padding: 6px 0; font-size: 0.95rem; }
+        .details-box td.label { font-weight: 600; color: #4b5563; width: 40%; }
+        .button-container { text-align: center; margin: 30px 0 15px 0; }
+        .button { display: inline-block; padding: 12px 28px; background-color: #10b981; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 600; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.15); }
+        .footer { background-color: #f9fafb; padding: 20px; text-align: center; font-size: 0.875rem; color: #6b7280; border-top: 1px solid #f3f4f6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Order Confirmed</h1>
+        </div>
+        <div class="content">
+            <p>Hello {{ customer_name }},</p>
+            <p>We are pleased to inform you that a new order has been created and confirmed in our system.</p>
+            
+            <div class="details-box">
+                <table>
+                    <tr>
+                        <td class="label">Order Code</td>
+                        <td>{{ order_code }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Product Name</td>
+                        <td>{{ product_name }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Quantity</td>
+                        <td>{{ quantity }} {{ unit }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Expected Dispatch</td>
+                        <td>{{ expected_dispatch_date or 'TBD' }}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <p>Our teams are starting raw material procurement and preparing the standard compliance documents. You will receive updates as the order advances through QA testing and packaging.</p>
+            
+            <div class="button-container">
+                <a href="{{ order_url }}" class="button">Track Order Timeline</a>
+            </div>
+            <p>Best regards,<br>The Fittree Operations Team</p>
+        </div>
+        <div class="footer">
+            &copy; 2026 Fittree Agri Commodities. All rights reserved.
+        </div>
+    </div>
+</body>
+</html>

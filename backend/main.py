@@ -23,11 +23,13 @@ Run with:
 
 import logging
 import logging.config
+import secrets
 from typing import Any
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
 
@@ -53,14 +55,23 @@ def configure_logging() -> None:
     """
     log_level = logging.DEBUG if settings.DEBUG else logging.INFO
 
+    if settings.is_production:
+        formatter_config = {
+            "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "format": "%(asctime)s %(levelname)s %(name)s %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        }
+    else:
+        formatter_config = {
+            "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        }
+
     logging.config.dictConfig({
         "version": 1,
         "disable_existing_loggers": False,
         "formatters": {
-            "standard": {
-                "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-                "datefmt": "%Y-%m-%d %H:%M:%S",
-            },
+            "standard": formatter_config,
         },
         "handlers": {
             "console": {
@@ -83,6 +94,22 @@ def configure_logging() -> None:
 
 configure_logging()
 logger = logging.getLogger(__name__)
+
+
+# ── Metrics Auth Dependency ───────────────────────────────────────────────────
+
+security = HTTPBasic()
+
+def get_metrics_user(credentials: HTTPBasicCredentials = Depends(security)) -> str:
+    correct_username = secrets.compare_digest(credentials.username, "prometheus")
+    correct_password = secrets.compare_digest(credentials.password, settings.METRICS_PASSWORD)
+    if not (correct_username and correct_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect metrics credentials",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
 
 
 # ── App factory ───────────────────────────────────────────────────────────────
@@ -115,7 +142,11 @@ def create_app() -> FastAPI:
     if settings.PROMETHEUS_METRICS_ENABLED:
         try:
             from prometheus_fastapi_instrumentator import Instrumentator
-            Instrumentator().instrument(app).expose(app, tags=["Observability"])
+            Instrumentator().instrument(app).expose(
+                app,
+                tags=["Observability"],
+                dependencies=[Depends(get_metrics_user)],
+            )
             logger.info("✓ Prometheus metrics endpoint enabled at /metrics")
         except ImportError:
             logger.warning("prometheus-fastapi-instrumentator not installed — metrics skipped")
@@ -200,6 +231,12 @@ def _register_exception_handlers(app: FastAPI) -> None:
             request.url.path,
             request_id,
         )
+        if settings.SENTRY_DSN:
+            try:
+                import sentry_sdk
+                sentry_sdk.capture_exception(exc)
+            except Exception as e:
+                logger.error("Failed to capture exception in Sentry: %s", e)
         return JSONResponse(
             status_code=500,
             content={
