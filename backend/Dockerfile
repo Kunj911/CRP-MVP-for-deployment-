@@ -12,8 +12,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy dependencies list and compile
 # NOTE: Build context is the REPO ROOT (not backend/)
-COPY Docs/requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+COPY backend/requirements ./requirements
+RUN pip install --no-cache-dir --user -r requirements/production.txt
 
 # ── Stage 2: Production image ────────────────────────────────────────────────
 FROM python:3.11-slim
