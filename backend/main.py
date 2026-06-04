@@ -157,6 +157,13 @@ def create_app() -> FastAPI:
     _register_exception_handlers(app)
     _register_routes(app)
 
+    # Mount static uploads directory if using local storage
+    if settings.STORAGE_BACKEND == "local":
+        from fastapi.staticfiles import StaticFiles
+        import os
+        os.makedirs(settings.LOCAL_UPLOAD_DIR, exist_ok=True)
+        app.mount("/uploads", StaticFiles(directory=settings.LOCAL_UPLOAD_DIR), name="uploads")
+
     return app
 
 

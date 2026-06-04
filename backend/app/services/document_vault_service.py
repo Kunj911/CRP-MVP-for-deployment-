@@ -106,13 +106,13 @@ def get_document_for_download(
     )
 
     # 4. Determine how to serve the file
-    # For local storage in development, the URL looks like: http://localhost:8000/uploads/...
+    # For local storage, the URL looks like: {BACKEND_URL}/uploads/...
     # We want to serve it securely via FileResponse instead of exposing static paths.
     backend = settings.STORAGE_BACKEND.lower()
     
     if backend == "local":
         # Extract the relative path from the URL
-        # e.g., http://localhost:8000/uploads/development/orders/1/...
+        # e.g., {BACKEND_URL}/uploads/development/orders/1/...
         if "/uploads/" in doc.file_url:
             relative_path = doc.file_url.split("/uploads/", 1)[-1]
             base_dir = Path(settings.LOCAL_UPLOAD_DIR).resolve()

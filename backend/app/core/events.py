@@ -4,9 +4,10 @@ app/core/events.py
 Application lifecycle event handlers.
 Registered in main.py via @app.on_event or lifespan context manager.
 
-Security hardening:
-  - Redis connectivity check at startup
-  - Fail-fast in production if Redis is unavailable
+Startup validation:
+  - Database connectivity is MANDATORY in staging and production.
+  - Redis is configurable via REDIS_REQUIRED setting.
+  - Development mode allows startup with warnings.
 """
 
 import logging
@@ -47,41 +48,99 @@ def _check_redis_connection() -> bool:
     return False
 
 
+def _redact_url(url: str) -> str:
+    """Redact password from a database/redis URL for safe logging."""
+    import re
+    return re.sub(r'://([^:]+):([^@]+)@', r'://\1:***@', url)
+
+
+def _verify_and_initialize_schema(db_engine) -> None:
+    """
+    Check if the database schema is initialized (specifically looking for the 'users' table).
+    If missing, initialize the schema using Base.metadata.create_all.
+    This guarantees that staging boots successfully on an empty PostgreSQL database.
+    """
+    from sqlalchemy import inspect
+    
+    try:
+        inspector = inspect(db_engine)
+        tables = inspector.get_table_names()
+        
+        if "users" not in tables:
+            logger.info("Database schema is uninitialized (missing 'users' table). Initializing schema...")
+            # Import all models explicitly to ensure they register on Base.metadata
+            import app.models
+            from app.database.connection import Base
+            
+            Base.metadata.create_all(bind=db_engine)
+            logger.info("✓ Database schema initialized successfully.")
+        else:
+            logger.info("✓ Database schema already initialized ('users' table present). Skipping initialization.")
+    except Exception as exc:
+        logger.error("Failed to verify/initialize database schema: %s", exc)
+        if settings.is_deployed:
+            raise RuntimeError(
+                f"Database schema initialization failed: {exc}. "
+                f"Ensure the database URL is correct and the user has DDL permissions."
+            )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Handles startup and shutdown events using the modern lifespan pattern.
     Passed directly to FastAPI() in main.py.
+    
+    Startup validation behavior:
+      - development: warn on failures, continue startup
+      - staging: FAIL on database unavailable, configurable Redis
+      - production: FAIL on database unavailable, configurable Redis
     """
     # ── STARTUP ───────────────────────────────────────────────────────────────
     logger.info("━━━ Starting %s [%s] ━━━", settings.APP_NAME, settings.APP_ENV)
+    logger.info("Database URL: %s", _redact_url(settings.DATABASE_URL))
 
     # Verify DB connectivity on boot
     if check_db_connection():
         logger.info("✓ Database connection established")
+        _verify_and_initialize_schema(engine)
     else:
         logger.critical(
-            "✗ Cannot connect to database at %s:%s — check your .env settings",
-            settings.DB_HOST,
-            settings.DB_PORT,
+            "✗ Cannot connect to database — URL: %s",
+            _redact_url(settings.DATABASE_URL),
         )
-        # In production, raise to prevent the server from starting broken
-        if settings.is_production:
-            raise RuntimeError("Database connection failed at startup")
+        # In staging and production, raise to prevent the server from starting broken
+        if settings.is_deployed:
+            raise RuntimeError(
+                f"Database connection failed at startup in '{settings.APP_ENV}' environment. "
+                f"Verify DATABASE_URL is set correctly."
+            )
+        else:
+            logger.warning(
+                "⚠ Database unavailable — continuing in development mode. "
+                "API routes requiring database will fail."
+            )
 
     # Verify Redis connectivity on boot
     if _check_redis_connection():
         logger.info("✓ Redis connection established")
     else:
-        logger.critical(
+        logger.warning(
             "✗ Cannot connect to Redis at %s",
-            settings.REDIS_URL,
+            _redact_url(settings.REDIS_URL),
         )
-        # In production, Redis is critical (brute-force protection, token revocation, CSRF)
-        if settings.is_production:
+        # Redis failure behavior depends on REDIS_REQUIRED setting
+        if settings.REDIS_REQUIRED:
             raise RuntimeError(
-                "Redis connection failed at startup. "
-                "Redis is required for brute-force protection, token revocation, and session management."
+                f"Redis connection failed at startup (REDIS_REQUIRED=True). "
+                f"Redis is required for brute-force protection, token revocation, and session management. "
+                f"Verify REDIS_URL is set correctly."
+            )
+        elif settings.is_deployed:
+            logger.warning(
+                "⚠ Redis is unavailable in '%s' environment — brute-force protection "
+                "and token revocation will degrade. Set REDIS_REQUIRED=True to enforce.",
+                settings.APP_ENV,
             )
         else:
             logger.warning(

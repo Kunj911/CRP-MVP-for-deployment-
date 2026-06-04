@@ -11,7 +11,7 @@ import logging.config
 from functools import lru_cache
 from typing import Literal, Optional
 from cryptography.fernet import Fernet
-from pydantic import computed_field, model_validator
+from pydantic import Field, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _config_logger = logging.getLogger("livetrace.config")
@@ -31,22 +31,36 @@ class Settings(BaseSettings):
     DEBUG: bool = True
 
     # ── Database ──────────────────────────────────────────────────────────────
+    # Railway injects DATABASE_URL automatically — captured here as the primary source.
+    # Falls back to component-based construction for local development.
+    DATABASE_URL_RAW: str = Field(default="", validation_alias="DATABASE_URL")  # Populated by DATABASE_URL env var on Railway
     DB_HOST: str = "localhost"
-    DB_PORT: int = 3306
+    DB_PORT: int = 5432
     DB_NAME: str = "livetrace"
     DB_USER: str = "root"
     DB_PASSWORD: str = ""
 
     # ── Redis ─────────────────────────────────────────────────────────────────
     REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_REQUIRED: bool = False  # Set True in staging/production to fail startup without Redis
 
     @computed_field
     @property
     def DATABASE_URL(self) -> str:
+        # 1. Use Railway-injected DATABASE_URL if present
+        if self.DATABASE_URL_RAW:
+            url = self.DATABASE_URL_RAW
+            # Railway uses postgres:// but SQLAlchemy 2.x requires postgresql://
+            if url.startswith("postgres://"):
+                url = url.replace("postgres://", "postgresql+psycopg2://", 1)
+            elif url.startswith("postgresql://"):
+                url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
+            # If already has the full driver prefix, use as-is
+            return url
+        # 2. Construct from individual components (local development)
         return (
-            f"mysql+pymysql://{self.DB_USER}:{self.DB_PASSWORD}"
+            f"postgresql+psycopg2://{self.DB_USER}:{self.DB_PASSWORD}"
             f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
-            "?charset=utf8mb4"
         )
 
     # ── Auth settings ─────────────────────────────────────────────────────────
@@ -114,6 +128,14 @@ class Settings(BaseSettings):
     def CORS_ORIGINS(self) -> list[str]:
         return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
 
+    # ── Redirect Allowed Domains ──────────────────────────────────────────────
+    ALLOWED_REDIRECT_DOMAINS: str = "localhost,127.0.0.1,db,redis,clamav"
+
+    @computed_field
+    @property
+    def REDIRECT_DOMAINS(self) -> list[str]:
+        return [d.strip().lower() for d in self.ALLOWED_REDIRECT_DOMAINS.split(",") if d.strip()]
+
     # ── SMTP / Email Configuration ────────────────────────────────────────
     SMTP_ENABLED: bool = True
     SMTP_HOST: str = "smtp.gmail.com"
@@ -132,6 +154,7 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = ""
     RESEND_API_URL: str = "https://api.resend.com/emails"
     FRONTEND_APP_URL: str = "http://localhost:5173"
+    BACKEND_URL: str = "http://localhost:8000"
 
     SMTP_USER: str = ""
     SMTP_TLS: bool = True
@@ -146,6 +169,15 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.APP_ENV == "production"
+
+    @property
+    def is_staging(self) -> bool:
+        return self.APP_ENV == "staging"
+
+    @property
+    def is_deployed(self) -> bool:
+        """True for any non-development environment (staging, production)."""
+        return self.APP_ENV != "development"
 
     @property
     def is_development(self) -> bool:
@@ -187,14 +219,14 @@ class Settings(BaseSettings):
             else:
                 object.__setattr__(self, "MFA_ENCRYPTION_KEY", Fernet.generate_key().decode())
 
-        if self.APP_ENV == "production" and self.DEBUG:
-            _config_logger.warning("Force-disabling DEBUG mode in production environment.")
+        if self.APP_ENV in ("production", "staging") and self.DEBUG:
+            _config_logger.warning("Force-disabling DEBUG mode in %s environment.", self.APP_ENV)
             object.__setattr__(self, "DEBUG", False)
 
-        if self.APP_ENV == "production":
+        if self.APP_ENV in ("production", "staging"):
             for origin in self.CORS_ORIGINS:
                 if origin == "*":
-                    raise ValueError("SECURITY BLOCK: CORS wildcard '*' is not allowed in production.")
+                    raise ValueError(f"SECURITY BLOCK: CORS wildcard '*' is not allowed in {self.APP_ENV}.")
 
         # Bind new SMTP variables to legacy counterparts for backward compatibility
         if self.SMTP_USERNAME and not self.SMTP_USER:

@@ -4,8 +4,8 @@ uvicorn[standard]==0.29.0
 
 # ── Database ───────────────────────────────────────────────────────────────────
 sqlalchemy>=2.0.35
-pymysql==1.1.0          # MySQL driver
-cryptography>=43.0.1    # Required by pymysql for auth plugins
+psycopg2-binary>=2.9.9   # PostgreSQL driver (Railway)
+cryptography>=43.0.1    # Required for auth plugins and Fernet MFA encryption
 alembic==1.13.1         # DB migrations
 
 # ── Auth & Security ────────────────────────────────────────────────────────────
@@ -38,10 +38,8 @@ aiosmtplib==3.0.1        # Async SMTP
 # ── Logging ───────────────────────────────────────────────────────────────────
 python-json-logger==2.0.7
 
-# ── Dev / Tooling ──────────────────────────────────────────────────────────────
-black==24.4.2
-isort==5.13.2
-flake8==7.0.0
+# ── Dev / Tooling (not needed in production images) ─────────────────────────
+# black, isort, flake8 moved to requirements/development.txt
 
 # ── Data Processing ────────────────────────────────────────────────────────────
 pandas>=2.2.3

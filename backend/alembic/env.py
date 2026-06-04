@@ -24,8 +24,8 @@ from app.models import (
     media_file,
     milestone,
     notification,
-    qa_report,
-    order_comment,
+    order_document_requirement,
+    order_event,
     events
 )
 

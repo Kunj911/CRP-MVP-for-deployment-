@@ -91,11 +91,13 @@ def download_document(
     if not is_local:
         from urllib.parse import urlparse
         from app.core.exceptions import ForbiddenException
+        from app.core.config import get_settings
+        settings = get_settings()
         parsed_url = urlparse(path_or_url)
         if parsed_url.netloc:
             netloc = parsed_url.netloc.lower()
             is_allowed = False
-            allowed_domains = ["localhost", "127.0.0.1", "db", "redis", "clamav"]
+            allowed_domains = settings.REDIRECT_DOMAINS
             for domain in allowed_domains:
                 if netloc == domain or netloc.startswith(domain + ":"):
                     is_allowed = True

@@ -3,6 +3,9 @@ app/core/redis_client.py
 
 Redis connection pool for caching and JWT blacklisting.
 Includes timeout configurations, retry strategy, and graceful failure handling.
+
+Railway: REDIS_URL is injected automatically.
+Falls back to redis://localhost:6379/0 for local development.
 """
 
 import redis
@@ -47,23 +50,62 @@ class SafeRedis:
         return val
 
 
-# Configure robust retry strategy
-_retry_strategy = Retry(
-    backoff=ExponentialBackoff(cap=10, base=2),
-    retries=3,
-)
+class NullRedis:
+    """
+    Complete no-op Redis replacement when Redis is entirely unavailable.
+    All operations return safe defaults without raising exceptions.
+    """
+    def __getattr__(self, name):
+        def wrapper(*args, **kwargs):
+            if name == "pipeline":
+                return SafeRedisPipeline()
+            if name == "ping":
+                return False
+            if name == "get":
+                return None
+            if name == "execute":
+                return []
+            return None
+        return wrapper
 
-# Connect with recommended timeouts (socket_timeout=5, socket_connect_timeout=5)
-_raw_client = redis.from_url(
-    settings.REDIS_URL,
-    decode_responses=True,
-    socket_timeout=5,
-    socket_connect_timeout=5,
-    retry=_retry_strategy,
-    retry_on_timeout=True,
-)
 
-redis_client = SafeRedis(_raw_client)
+def _create_redis_client():
+    """
+    Create a Redis client with robust error handling.
+    Returns SafeRedis (connected) or NullRedis (fallback) depending on availability.
+    """
+    try:
+        # Configure robust retry strategy
+        _retry_strategy = Retry(
+            backoff=ExponentialBackoff(cap=10, base=2),
+            retries=3,
+        )
+
+        # Connect with recommended timeouts
+        _raw_client = redis.from_url(
+            settings.REDIS_URL,
+            decode_responses=True,
+            socket_timeout=5,
+            socket_connect_timeout=5,
+            retry=_retry_strategy,
+            retry_on_timeout=True,
+        )
+
+        # Test connectivity immediately
+        _raw_client.ping()
+        logger.info("Redis client connected to %s", settings.REDIS_URL.split("@")[-1] if "@" in settings.REDIS_URL else settings.REDIS_URL)
+        return SafeRedis(_raw_client)
+
+    except Exception as exc:
+        logger.warning(
+            "Redis connection failed during initialization: %s. "
+            "Using NullRedis fallback — caching and brute-force protection disabled.",
+            exc,
+        )
+        return NullRedis()
+
+
+redis_client = _create_redis_client()
 
 def get_redis():
     """Dependency for getting the Redis client."""

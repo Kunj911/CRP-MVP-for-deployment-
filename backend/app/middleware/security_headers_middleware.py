@@ -50,8 +50,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "camera=(), microphone=(), geolocation=()"
         )
 
-        # ── Production-only headers ───────────────────────────────────────
-        if settings.is_production:
+        # ── Deployment-only headers (Staging / Production) ────────────────
+        if settings.is_deployed:
             # HSTS: enforce HTTPS for 1 year, including subdomains
             response.headers["Strict-Transport-Security"] = (
                 "max-age=31536000; includeSubDomains"

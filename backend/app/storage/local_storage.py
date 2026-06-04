@@ -29,7 +29,7 @@ settings = get_settings()
 class LocalStorage(StorageBackend):
     """
     Saves files to the local filesystem under settings.LOCAL_UPLOAD_DIR.
-    Returns a URL in the form: http://localhost:8000/uploads/{path}
+    Returns a URL in the form: {BACKEND_URL}/uploads/{path}
     """
 
     def __init__(self):
@@ -71,7 +71,8 @@ class LocalStorage(StorageBackend):
             raise StorageException(f"Failed to write file: {exc}") from exc
 
         # Return a URL relative to the static mount point
-        return f"http://localhost:8000/uploads/{destination_path}"
+        backend_url = settings.BACKEND_URL.rstrip("/")
+        return f"{backend_url}/uploads/{destination_path}"
 
     def delete(self, file_path: str) -> None:
         """Remove a file from disk."""
@@ -85,4 +86,5 @@ class LocalStorage(StorageBackend):
 
     def get_url(self, file_path: str) -> str:
         self._validate_path(file_path)  # Validate even for URL generation
-        return f"http://localhost:8000/uploads/{file_path}"
+        backend_url = settings.BACKEND_URL.rstrip("/")
+        return f"{backend_url}/uploads/{file_path}"

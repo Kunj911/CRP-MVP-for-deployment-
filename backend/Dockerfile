@@ -3,9 +3,10 @@ FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
-# Install build dependencies and libmagic
+# Install build dependencies (libpq-dev for psycopg2, libmagic1 for python-magic)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    libpq-dev \
     libmagic1 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -19,9 +20,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install runtime dependencies
+# Install runtime dependencies (libpq5 for psycopg2, libmagic1 for python-magic)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    libpq5 \
     libmagic1 \
     && rm -rf /var/lib/apt/lists/*
 

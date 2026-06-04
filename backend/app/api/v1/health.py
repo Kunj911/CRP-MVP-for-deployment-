@@ -7,7 +7,7 @@ router = APIRouter()
 
 @router.get("/health", tags=["System"])
 def health_check() -> dict[str, Any]:
-    """Check connectivity to downstream dependencies (MySQL and Redis)."""
+    """Check connectivity to downstream dependencies (PostgreSQL and Redis)."""
     db_ok = check_db_connection()
     redis_ok = redis_client.ping()
     
