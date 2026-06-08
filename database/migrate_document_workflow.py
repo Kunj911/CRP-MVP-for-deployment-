@@ -45,6 +45,15 @@ def run_migration():
             else:
                 print(f" -> Error adding column '{col_name}': {e}")
                 
+    # Ensure is_deleted has DEFAULT 0 even if duplicate check was skipped
+    print("Ensuring documents.is_deleted has DEFAULT 0...")
+    try:
+        cursor.execute("ALTER TABLE documents ALTER COLUMN is_deleted SET DEFAULT 0;")
+        conn.commit()
+        print(" -> Default for is_deleted set successfully!")
+    except Exception as e:
+        print(f" -> Error setting is_deleted default: {e}")
+                
     # 3. Add foreign key constraint for reviewed_by on documents
     print("Adding foreign key constraint for reviewed_by...")
     try:
@@ -151,6 +160,15 @@ def run_migration():
                 print(f" -> Column '{col_name}' already exists.")
             else:
                 print(f" -> Error adding column '{col_name}': {e}")
+                
+    # Ensure is_read has DEFAULT 0 even if duplicate check was skipped
+    print("Ensuring notifications.is_read has DEFAULT 0...")
+    try:
+        cursor.execute("ALTER TABLE notifications ALTER COLUMN is_read SET DEFAULT 0;")
+        conn.commit()
+        print(" -> Default for is_read set successfully!")
+    except Exception as e:
+        print(f" -> Error setting is_read default: {e}")
                 
     # Add foreign key constraints to notifications
     print("Adding foreign key constraints to notifications...")

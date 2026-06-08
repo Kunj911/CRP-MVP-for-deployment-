@@ -4,6 +4,7 @@ from datetime import datetime, date, timedelta
 import pymysql
 import bcrypt
 from db_config import get_db_connection
+from migrate_document_workflow import run_migration
 
 # Removed parse_env in favor of shared db_config
 
@@ -15,7 +16,14 @@ def hash_password(password: str) -> str:
     return hashed.decode("utf-8")
 
 def main():
-    print("Connecting to MySQL database...")
+    print("Running database schema migrations...")
+    try:
+        run_migration()
+        print("✓ Database migrations verified/applied successfully.")
+    except Exception as e:
+        print(f"Warning: Migration execution encountered an issue: {e}")
+
+    print("\nConnecting to MySQL database...")
     try:
         conn = get_db_connection(autocommit=False)
         cursor = conn.cursor()
@@ -39,6 +47,16 @@ def main():
             "customers"
         ]
         
+        # Disable foreign key checks for seeding
+        cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
+
+        # Drop legacy/unused tables if they exist to prevent foreign key errors
+        print("\nDropping legacy/unused tables if they exist...")
+        cursor.execute("DROP TABLE IF EXISTS qa_reports;")
+        print("✓ Dropped legacy table qa_reports (if existed)")
+        cursor.execute("DROP TABLE IF EXISTS order_comments;")
+        print("✓ Dropped legacy table order_comments (if existed)")
+
         print("\nClearing existing database tables...")
         for table in tables:
             cursor.execute(f"DELETE FROM {table}")
@@ -82,8 +100,8 @@ def main():
         for name, email, role, pwd, phone in internal_users:
             pw_hash = hash_password(pwd)
             cursor.execute(
-                """INSERT INTO users (full_name, email, role, password_hash, phone, customer_id) 
-                   VALUES (%s, %s, %s, %s, %s, NULL)""",
+                """INSERT INTO users (full_name, email, role, password_hash, phone, customer_id, is_active, mfa_enabled) 
+                   VALUES (%s, %s, %s, %s, %s, NULL, 1, 0)""",
                 (name, email, role, pw_hash, phone)
             )
             
@@ -99,8 +117,8 @@ def main():
             cust_id = cursor.fetchone()[0]
             pw_hash = hash_password(pwd)
             cursor.execute(
-                """INSERT INTO users (full_name, email, role, password_hash, phone, customer_id) 
-                   VALUES (%s, %s, 'CUSTOMER', %s, %s, %s)""",
+                """INSERT INTO users (full_name, email, role, password_hash, phone, customer_id, is_active, mfa_enabled) 
+                   VALUES (%s, %s, 'CUSTOMER', %s, %s, %s, 1, 0)""",
                 (name, email, pw_hash, phone, cust_id)
             )
         conn.commit()
@@ -160,12 +178,13 @@ def main():
         
         stages = [
             ("PROCUREMENT", wh_user_id, "Raw materials sourced and verified from select growers."),
-            ("QA_VERIFICATION", qa_user_id, "Raw material physical verification complete."),
+            ("RAW_MATERIAL_VERIFIED", qa_user_id, "Raw material physical verification complete."),
             ("QA_TESTING", qa_user_id, "Lab analysis cleared. Sample meets physical and chemical grades."),
-            ("PACKAGING", wh_user_id, "Bags packaged, vacuum sealed, and palletized."),
-            ("DOCUMENTATION", doc_user_id, "Export invoice, packing lists, and certificates prepared."),
+            ("PACKAGING_STARTED", wh_user_id, "Packaging process initiated."),
+            ("PACKAGING_COMPLETED", wh_user_id, "Bags packaged, vacuum sealed, and palletized."),
+            ("DOCUMENTS_UPLOADED", doc_user_id, "Export invoice, packing lists, and certificates prepared."),
             ("CONTAINER_LOADING", wh_user_id, "Loaded into container and verified cargo seals."),
-            ("SHIPMENT_DISPATCH_ALERT", admin_user_id, "Dispatched via cargo transit."),
+            ("SHIPMENT_DISPATCHED", admin_user_id, "Dispatched via cargo transit."),
             ("DELIVERED", admin_user_id, "Delivered to port destination warehouse.")
         ]
         
@@ -173,11 +192,11 @@ def main():
             "CREATED": -1,
             "PROCUREMENT": 0,
             "QA_TESTING": 2,
-            "PACKAGING": 3,
-            "DOCUMENTATION": 4,
-            "READY_FOR_SHIPMENT": 5,
-            "SHIPPED": 6,
-            "DELIVERED": 7
+            "PACKAGING": 4,
+            "DOCUMENTATION": 5,
+            "READY_FOR_SHIPMENT": 6,
+            "SHIPPED": 7,
+            "DELIVERED": 9
         }
         
         DOCUMENT_REQUIREMENTS = {
@@ -341,11 +360,11 @@ def main():
                        VALUES (%s, %s, 'PROCUREMENT_IMAGE', %s, %s, 245000, NULL, %s)""",
                     (order_id, milestone_ids["PROCUREMENT"], f"raw_material_{order_code}.jpg", f"/uploads/{order_code}/media/raw_material_{order_code}.jpg", wh_user_id)
                 )
-            if status_index >= 3:
+            if status_index >= 4:
                 cursor.execute(
                     """INSERT INTO media_files (order_id, milestone_id, media_type, file_name, file_url, file_size, storage_key, uploaded_by) 
                        VALUES (%s, %s, 'PACKAGING_IMAGE', %s, %s, 189000, NULL, %s)""",
-                    (order_id, milestone_ids["PACKAGING"], f"packaging_{order_code}.jpg", f"/uploads/{order_code}/media/packaging_{order_code}.jpg", wh_user_id)
+                    (order_id, milestone_ids["PACKAGING_COMPLETED"], f"packaging_{order_code}.jpg", f"/uploads/{order_code}/media/packaging_{order_code}.jpg", wh_user_id)
                 )
 
             # Seed Notifications with new structure (In-app support)
@@ -374,6 +393,8 @@ def main():
             )
 
         conn.commit()
+        # Restore foreign key checks
+        cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
         print("✓ Database seeding complete!")
         
         print("\n" + "=" * 60)
@@ -387,11 +408,19 @@ def main():
         
     except Exception as e:
         conn.rollback()
+        try:
+            cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
+        except Exception:
+            pass
         print(f"\n❌ Error during database seeding transaction: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
     finally:
+        try:
+            cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
+        except Exception:
+            pass
         conn.close()
         print("\nDatabase connection closed. Seeding complete.")
 

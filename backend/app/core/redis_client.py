@@ -50,62 +50,59 @@ class SafeRedis:
         return val
 
 
-class NullRedis:
+class LazyRedis:
     """
-    Complete no-op Redis replacement when Redis is entirely unavailable.
-    All operations return safe defaults without raising exceptions.
+    Reconnect lazily instead of permanently degrading when Redis is not ready at import time.
     """
-    def __getattr__(self, name):
-        def wrapper(*args, **kwargs):
-            if name == "pipeline":
-                return SafeRedisPipeline()
-            if name == "ping":
-                return False
-            if name == "get":
-                return None
-            if name == "execute":
-                return []
-            return None
-        return wrapper
+    def __init__(self):
+        self._client = None
 
-
-def _create_redis_client():
-    """
-    Create a Redis client with robust error handling.
-    Returns SafeRedis (connected) or NullRedis (fallback) depending on availability.
-    """
-    try:
-        # Configure robust retry strategy
-        _retry_strategy = Retry(
+    def _connect(self):
+        retry_strategy = Retry(
             backoff=ExponentialBackoff(cap=10, base=2),
             retries=3,
         )
-
-        # Connect with recommended timeouts
-        _raw_client = redis.from_url(
+        raw_client = redis.from_url(
             settings.REDIS_URL,
             decode_responses=True,
             socket_timeout=5,
             socket_connect_timeout=5,
-            retry=_retry_strategy,
+            retry=retry_strategy,
             retry_on_timeout=True,
         )
-
-        # Test connectivity immediately
-        _raw_client.ping()
-        logger.info("Redis client connected to %s", settings.REDIS_URL.split("@")[-1] if "@" in settings.REDIS_URL else settings.REDIS_URL)
-        return SafeRedis(_raw_client)
-
-    except Exception as exc:
-        logger.warning(
-            "Redis connection failed during initialization: %s. "
-            "Using NullRedis fallback — caching and brute-force protection disabled.",
-            exc,
+        raw_client.ping()
+        logger.info(
+            "Redis client connected to %s",
+            settings.REDIS_URL.split("@")[-1] if "@" in settings.REDIS_URL else settings.REDIS_URL,
         )
-        return NullRedis()
+        self._client = SafeRedis(raw_client)
+        return self._client
+
+    def __getattr__(self, name):
+        def wrapper(*args, **kwargs):
+            try:
+                client = self._client or self._connect()
+                return getattr(client, name)(*args, **kwargs)
+            except Exception as exc:
+                logger.warning(
+                    "Redis error during '%s' operation: %s. Degrading gracefully.",
+                    name,
+                    exc,
+                )
+                self._client = None
+                if name == "pipeline":
+                    return SafeRedisPipeline()
+                if name == "ping":
+                    return False
+                if name == "get":
+                    return None
+                if name == "execute":
+                    return []
+                return None
+        return wrapper
 
 
-redis_client = _create_redis_client()
+redis_client = LazyRedis()
 
 def get_redis():
     """Dependency for getting the Redis client."""

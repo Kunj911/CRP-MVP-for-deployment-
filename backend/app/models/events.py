@@ -6,7 +6,8 @@ This ensures that core domain changes are immutably logged to the DB,
 even if the service layer forgets to call _log_audit.
 """
 
-from sqlalchemy import event
+from typing import Optional
+from sqlalchemy import event, inspect
 from sqlalchemy.orm import Session
 
 from app.models.order import Order
@@ -14,15 +15,15 @@ from app.models.milestone import Milestone
 from app.models.audit_log import AuditLog
 from app.models.user import User
 
-def _get_current_user_id() -> int:
+def _get_current_user_id() -> Optional[int]:
     # In a real ASGI app with request context, you'd use contextvars
-    # For simplicity, fallback to a system id (e.g. 0) if no context available.
-    return 0
+    # For simplicity, fallback to None if no context available.
+    return None
 
 @event.listens_for(Order, "after_update")
 def receive_order_after_update(mapper, connection, target):
     """Automatically log when an order status changes."""
-    state = event.inspect(target)
+    state = inspect(target)
     
     changes = []
     if state.attrs.shipment_status.history.has_changes():
@@ -45,7 +46,7 @@ def receive_order_after_update(mapper, connection, target):
 @event.listens_for(Milestone, "after_update")
 def receive_milestone_after_update(mapper, connection, target):
     """Automatically log milestone updates."""
-    state = event.inspect(target)
+    state = inspect(target)
     
     if state.attrs.status.history.has_changes():
         connection.execute(

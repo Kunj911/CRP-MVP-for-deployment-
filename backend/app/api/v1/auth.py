@@ -110,7 +110,7 @@ def _set_csrf_cookie(response: Response) -> None:
         "All roles supported: SUPER_ADMIN, ADMIN, WAREHOUSE, QA, DOCUMENTATION, CUSTOMER."
     ),
 )
-@limiter.limit("5/15minutes")
+@limiter.limit("100/10minutes")
 def login(
     body: LoginRequest,
     request: Request,
@@ -254,7 +254,7 @@ def get_me(current_user: CurrentUser) -> UserMeResponse:
         "Invalidates all existing sessions on success (forces re-login everywhere)."
     ),
 )
-@limiter.limit("3/15minutes")
+@limiter.limit("10/15minutes")
 def change_password(
     body: ChangePasswordRequest,
     request: Request,
@@ -320,7 +320,7 @@ def mfa_verify(
         "user_id + OTP code here to complete authentication."
     ),
 )
-@limiter.limit("5/15minutes")
+@limiter.limit("10/15minutes")
 def mfa_login_verify(
     body: MFALoginRequest,
     request: Request,

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # ── 1. Database (MySQL 8)
   db:
@@ -7,12 +5,14 @@ services:
     container_name: livetrace_db
     restart: always
     environment:
-      MYSQL_DATABASE: livetrace
+      MYSQL_DATABASE: live_trace_dashboard
       MYSQL_USER: livetrace_user
       MYSQL_PASSWORD: SecureDbPassword123!
       MYSQL_ROOT_PASSWORD: RootSecurePassword123!
+      TZ: UTC
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-time-zone=+00:00
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -27,7 +27,7 @@ services:
     container_name: livetrace_redis
     restart: always
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -59,7 +59,9 @@ services:
     env_file:
       - .env.production
     environment:
-      - DB_HOST=db
+      - DB_HOST=livetrace_db
+      - DB_PORT=3306
+      - DB_NAME=live_trace_dashboard
       - REDIS_URL=redis://redis:6379/0
       - CLAMAV_HOST=clamav
     ports:
@@ -90,7 +92,9 @@ services:
     env_file:
       - .env.production
     environment:
-      - DB_HOST=db
+      - DB_HOST=livetrace_db
+      - DB_PORT=3306
+      - DB_NAME=live_trace_dashboard
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       db:
@@ -109,7 +113,9 @@ services:
     env_file:
       - .env.production
     environment:
-      - DB_HOST=db
+      - DB_HOST=livetrace_db
+      - DB_PORT=3306
+      - DB_NAME=live_trace_dashboard
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       redis:

@@ -48,15 +48,15 @@ def main():
                         )
                         print(f"  {FAIL} Expected 'live_trace_dashboard', got '{val}'")
         else:
-            print(f"  {WARN} DB_NAME not set in .env — default is 'livetrace' (WRONG!)")
+            print(f"  {WARN} DB_NAME not set in .env — default is 'live_trace_dashboard'")
             issues_found.append(
-                "DB_NAME not in .env — backend defaults to 'livetrace' but DB is 'live_trace_dashboard'"
+                "DB_NAME not in .env — backend defaults to 'live_trace_dashboard'"
             )
     else:
         print(f"  {FAIL} .env file NOT FOUND!")
-        print(f"     Backend will use defaults: DB_NAME='livetrace', DB_PASSWORD=''")
+        print(f"     Backend will use defaults: DB_NAME='live_trace_dashboard', DB_PASSWORD='2104'")
         issues_found.append(
-            "No .env file — backend connects to wrong DB 'livetrace' instead of 'live_trace_dashboard'"
+            "No .env file — backend uses built-in MySQL defaults for local development"
         )
 
     # ── 2. Try loading settings ───────────────────────────────────

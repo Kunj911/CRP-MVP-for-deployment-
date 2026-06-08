@@ -3,27 +3,25 @@ FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
-# Install build dependencies (libpq-dev for psycopg2, libmagic1 for python-magic)
+# Install build dependencies (libmagic1 for python-magic)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    libpq-dev \
     libmagic1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy dependencies list and compile
 # NOTE: Build context is the REPO ROOT (not backend/)
-COPY backend/requirements ./requirements
-RUN pip install --no-cache-dir --user -r requirements/production.txt
+COPY Docs/requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
 
 # ── Stage 2: Production image ────────────────────────────────────────────────
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install runtime dependencies (libpq5 for psycopg2, libmagic1 for python-magic)
+# Install runtime dependencies (libmagic1 for python-magic)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    libpq5 \
     libmagic1 \
     && rm -rf /var/lib/apt/lists/*
 

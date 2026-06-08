@@ -10,8 +10,9 @@ import logging
 import logging.config
 from functools import lru_cache
 from typing import Literal, Optional
+from urllib.parse import quote_plus
 from cryptography.fernet import Fernet
-from pydantic import Field, computed_field, model_validator
+from pydantic import computed_field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _config_logger = logging.getLogger("livetrace.config")
@@ -30,15 +31,23 @@ class Settings(BaseSettings):
     APP_ENV: Literal["development", "staging", "production"] = "development"
     DEBUG: bool = True
 
+    @field_validator("DEBUG", mode="before")
+    @classmethod
+    def _parse_debug(cls, value):
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"release", "prod", "production", "false", "0", "no", "off"}:
+                return False
+            if normalized in {"debug", "dev", "development", "true", "1", "yes", "on"}:
+                return True
+        return value
+
     # ── Database ──────────────────────────────────────────────────────────────
-    # Railway injects DATABASE_URL automatically — captured here as the primary source.
-    # Falls back to component-based construction for local development.
-    DATABASE_URL_RAW: str = Field(default="", validation_alias="DATABASE_URL")  # Populated by DATABASE_URL env var on Railway
     DB_HOST: str = "localhost"
-    DB_PORT: int = 5432
-    DB_NAME: str = "livetrace"
+    DB_PORT: int = 3306
+    DB_NAME: str = "live_trace_dashboard"
     DB_USER: str = "root"
-    DB_PASSWORD: str = ""
+    DB_PASSWORD: str = "2104"
 
     # ── Redis ─────────────────────────────────────────────────────────────────
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -47,20 +56,11 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def DATABASE_URL(self) -> str:
-        # 1. Use Railway-injected DATABASE_URL if present
-        if self.DATABASE_URL_RAW:
-            url = self.DATABASE_URL_RAW
-            # Railway uses postgres:// but SQLAlchemy 2.x requires postgresql://
-            if url.startswith("postgres://"):
-                url = url.replace("postgres://", "postgresql+psycopg2://", 1)
-            elif url.startswith("postgresql://"):
-                url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
-            # If already has the full driver prefix, use as-is
-            return url
-        # 2. Construct from individual components (local development)
+        user = quote_plus(self.DB_USER)
+        password = quote_plus(self.DB_PASSWORD)
         return (
-            f"postgresql+psycopg2://{self.DB_USER}:{self.DB_PASSWORD}"
-            f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+            f"mysql+pymysql://{user}:{password}"
+            f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}?charset=utf8mb4"
         )
 
     # ── Auth settings ─────────────────────────────────────────────────────────

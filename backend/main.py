@@ -28,7 +28,7 @@ from typing import Any
 
 from fastapi import FastAPI, Request, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
@@ -195,8 +195,16 @@ def _register_middleware(app: FastAPI) -> None:
 
     # 4. CONFIG-002: HTTPS redirect in production only
     if settings.is_production:
-        from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
-        app.add_middleware(HTTPSRedirectMiddleware)
+        @app.middleware("http")
+        async def https_redirect_middleware(request: Request, call_next):
+            forwarded_proto = request.headers.get("x-forwarded-proto", "").lower()
+            # Allow local loopback to bypass HTTPS redirect for health checks and local testing/auditing
+            is_local = request.url.hostname in ("localhost", "127.0.0.1")
+            if request.url.path == "/health" or is_local or forwarded_proto == "https":
+                return await call_next(request)
+            if request.url.scheme == "http":
+                return RedirectResponse(request.url.replace(scheme="https"))
+            return await call_next(request)
 
     # 5. Request / response logging with timing and request IDs
     app.add_middleware(LoggingMiddleware)

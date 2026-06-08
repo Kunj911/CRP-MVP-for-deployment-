@@ -58,7 +58,7 @@ def _verify_and_initialize_schema(db_engine) -> None:
     """
     Check if the database schema is initialized (specifically looking for the 'users' table).
     If missing, initialize the schema using Base.metadata.create_all.
-    This guarantees that staging boots successfully on an empty PostgreSQL database.
+    This guarantees that staging boots successfully on an empty MySQL database.
     """
     from sqlalchemy import inspect
     
@@ -66,12 +66,15 @@ def _verify_and_initialize_schema(db_engine) -> None:
         inspector = inspect(db_engine)
         tables = inspector.get_table_names()
         
-        if "users" not in tables:
-            logger.info("Database schema is uninitialized (missing 'users' table). Initializing schema...")
-            # Import all models explicitly to ensure they register on Base.metadata
-            import app.models
-            from app.database.connection import Base
-            
+        import app.models
+        from app.database.connection import Base
+
+        expected_tables = set(Base.metadata.tables.keys())
+        existing_tables = set(tables)
+        missing_tables = sorted(expected_tables - existing_tables)
+
+        if missing_tables:
+            logger.info("Database schema is missing tables %s. Initializing schema...", missing_tables)
             Base.metadata.create_all(bind=db_engine)
             logger.info("✓ Database schema initialized successfully.")
         else:
@@ -113,7 +116,7 @@ async def lifespan(app: FastAPI):
         if settings.is_deployed:
             raise RuntimeError(
                 f"Database connection failed at startup in '{settings.APP_ENV}' environment. "
-                f"Verify DATABASE_URL is set correctly."
+                f"Verify DB_HOST, DB_PORT, DB_NAME, DB_USER, and DB_PASSWORD are set correctly."
             )
         else:
             logger.warning(

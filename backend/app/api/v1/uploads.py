@@ -58,7 +58,7 @@ router = APIRouter(tags=["Uploads"])
         "Requires ADMIN, WAREHOUSE, or QA role."
     ),
 )
-@limiter.limit("10/minute")
+@limiter.limit("15/minute")
 async def upload_photo(
     request: Request,
     current_user: CurrentUser,

@@ -87,6 +87,32 @@ _MIME_TO_EXTENSION: dict[str, str] = {
     "application/vnd.ms-excel": ".xls",
 }
 
+_DOCUMENT_TO_LEGACY_DB_TYPE = {
+    "invoice": "INVOICE",
+    "bill_of_lading": "BL_COPY",
+    "certificate_of_analysis": "COA",
+    "phytosanitary_certificate": "PHYTOSANITARY_CERTIFICATE",
+    "lab_report": "LAB_REPORT",
+    "packing_list": "PACKING_LIST",
+    "other": "OTHER",
+    "product_specification": "product_specification",
+    "insurance_certificate": "insurance_certificate",
+    "purchase_order": "purchase_order",
+    "certificate_of_origin": "certificate_of_origin",
+}
+_LEGACY_DB_TO_DOCUMENT_TYPE = {
+    legacy: current for current, legacy in _DOCUMENT_TO_LEGACY_DB_TYPE.items()
+}
+
+
+def _document_db_type(document_type: DocumentType | str) -> str:
+    value = document_type.value if isinstance(document_type, DocumentType) else str(document_type)
+    return _DOCUMENT_TO_LEGACY_DB_TYPE.get(value, "OTHER")
+
+
+def _requirement_document_type(document_type: str) -> str:
+    return _LEGACY_DB_TO_DOCUMENT_TYPE.get(document_type, document_type)
+
 # Chunk size for streamed reads (64KB)
 _STREAM_CHUNK_SIZE = 64 * 1024
 
@@ -421,9 +447,10 @@ async def upload_document(
             raise StorageException(f"Document upload failed: {exc}") from exc
 
         # 9. Save DB record
+        document_db_type = _document_db_type(document_type)
         doc_record = Document(
             order_id=order_id,
-            document_type=document_type.value,
+            document_type=document_db_type,
             file_name=file.filename,
             file_url=file_url,
             file_size=total_size,
@@ -576,7 +603,7 @@ def get_order_documents(
         )
         
     if document_type:
-        query = query.filter(Document.document_type == document_type.value)
+        query = query.filter(Document.document_type == _document_db_type(document_type))
 
     docs = query.order_by(Document.uploaded_at.desc()).all()
     return [DocumentResponse.model_validate(d) for d in docs]
@@ -736,9 +763,10 @@ def approve_document(doc_id: int, current_user: User, db: Session) -> Document:
     doc.reviewed_at = func.now()
     
     # Update checklist requirement
+    requirement_type = _requirement_document_type(doc.document_type)
     req = db.query(OrderDocumentRequirement).filter(
         OrderDocumentRequirement.order_id == doc.order_id,
-        OrderDocumentRequirement.document_type == doc.document_type
+        OrderDocumentRequirement.document_type == requirement_type
     ).first()
     
     if req:
@@ -801,9 +829,10 @@ def reject_document(doc_id: int, remarks: str, current_user: User, db: Session) 
     doc.reviewed_at = func.now()
     
     # Update checklist requirement
+    requirement_type = _requirement_document_type(doc.document_type)
     req = db.query(OrderDocumentRequirement).filter(
         OrderDocumentRequirement.order_id == doc.order_id,
-        OrderDocumentRequirement.document_type == doc.document_type
+        OrderDocumentRequirement.document_type == requirement_type
     ).first()
     
     if req:
@@ -848,4 +877,3 @@ def reject_document(doc_id: int, remarks: str, current_user: User, db: Session) 
     db.commit()
     db.refresh(doc)
     return doc
-

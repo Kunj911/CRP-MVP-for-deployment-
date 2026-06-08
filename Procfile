@@ -1,1 +1,1 @@
-# Procfile disabled in favor of railway.json and Dockerfile
+web: uvicorn main:app --host 0.0.0.0 --port $PORT

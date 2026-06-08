@@ -1,0 +1,160 @@
+{
+    "metadata": {
+        "timestamp": "2026-06-05T19:37:30.748688",
+        "runner": "FastAPI TestClient Dynamic Auditor",
+        "env": "testing"
+    },
+    "summary": {
+        "total": 29,
+        "passed": 29,
+        "failed": 0,
+        "score": 100
+    },
+    "tests": [
+        {
+            "name": "Auth - Valid Login: SUPER_ADMIN",
+            "passed": true,
+            "detail": "Token returned successfully"
+        },
+        {
+            "name": "Auth - Valid Login: WAREHOUSE",
+            "passed": true,
+            "detail": "Token returned successfully"
+        },
+        {
+            "name": "Auth - Valid Login: QA",
+            "passed": true,
+            "detail": "Token returned successfully"
+        },
+        {
+            "name": "Auth - Valid Login: DOCS",
+            "passed": true,
+            "detail": "Token returned successfully"
+        },
+        {
+            "name": "Auth - Valid Login: CUSTOMER_A",
+            "passed": true,
+            "detail": "Token returned successfully"
+        },
+        {
+            "name": "Auth - Valid Login: CUSTOMER_B",
+            "passed": true,
+            "detail": "Token returned successfully"
+        },
+        {
+            "name": "Auth - Invalid Password Login Rejected",
+            "passed": true,
+            "detail": "Status: 401"
+        },
+        {
+            "name": "Auth - Missing Token Rejected",
+            "passed": true,
+            "detail": "Status: 401"
+        },
+        {
+            "name": "Auth - Malformed Token Rejected",
+            "passed": true,
+            "detail": "Status: 401"
+        },
+        {
+            "name": "RBAC - GET /customers (Super Admin Allowed)",
+            "passed": true,
+            "detail": "Status: 200"
+        },
+        {
+            "name": "RBAC - GET /customers (Customer Denied)",
+            "passed": true,
+            "detail": "Status: 403"
+        },
+        {
+            "name": "RBAC - GET /orders/dashboard/stats (QA Staff Allowed)",
+            "passed": true,
+            "detail": "Status: 200"
+        },
+        {
+            "name": "RBAC - GET /orders/dashboard/stats (Customer Denied)",
+            "passed": true,
+            "detail": "Status: 403"
+        },
+        {
+            "name": "RBAC - DELETE /orders/23/cancel (Warehouse Denied)",
+            "passed": true,
+            "detail": "Status: 403"
+        },
+        {
+            "name": "RBAC - DELETE /orders/23/cancel (Super Admin Allowed)",
+            "passed": true,
+            "detail": "Status: 200"
+        },
+        {
+            "name": "Isolation - Customer A view Customer B Order (Denied/NotFound)",
+            "passed": true,
+            "detail": "Status: 404"
+        },
+        {
+            "name": "Isolation - Customer A view Customer B Milestones (Denied/NotFound)",
+            "passed": true,
+            "detail": "Status: 404"
+        },
+        {
+            "name": "Isolation - Customer A view Customer B Timeline (Denied/NotFound)",
+            "passed": true,
+            "detail": "Status: 404"
+        },
+        {
+            "name": "Isolation - Customer A view Customer B Documents list (Denied/NotFound)",
+            "passed": true,
+            "detail": "Status: 404"
+        },
+        {
+            "name": "Isolation - Customer A view Customer B Doc Metadata (Denied/NotFound)",
+            "passed": true,
+            "detail": "Status: 404"
+        },
+        {
+            "name": "Isolation - Customer A download Customer B Document File (Denied/NotFound)",
+            "passed": true,
+            "detail": "Status: 404"
+        },
+        {
+            "name": "Doc Vault - Upload Document as Docs Team (Allowed)",
+            "passed": true,
+            "detail": "Uploaded temp document ID 98"
+        },
+        {
+            "name": "Doc Vault - Customer access internal document metadata (Denied)",
+            "passed": true,
+            "detail": "Status: 403"
+        },
+        {
+            "name": "Doc Vault - Customer download internal document file (Denied)",
+            "passed": true,
+            "detail": "Status: 403"
+        },
+        {
+            "name": "E2E - Super Admin Onboards Customer (Success)",
+            "passed": true,
+            "detail": "Customer ID: 9"
+        },
+        {
+            "name": "E2E - Create Order for Onboarded Customer (Success)",
+            "passed": true,
+            "detail": "Order ID: 24"
+        },
+        {
+            "name": "E2E - Bulk Initialize Milestones (Success)",
+            "passed": true,
+            "detail": "Status: 201"
+        },
+        {
+            "name": "E2E - Advance Status CREATED -> PROCUREMENT (Success)",
+            "passed": true,
+            "detail": "Status: 200"
+        },
+        {
+            "name": "E2E - Audit Log Generation Check",
+            "passed": true,
+            "detail": "Found 12 audit entries for order 24"
+        }
+    ]
+}

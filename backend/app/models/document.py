@@ -55,17 +55,12 @@ class Document(Base):
             "LAB_REPORT",
             "PACKING_LIST",
             "OTHER",
-            "invoice",
             "bill_of_lading",
-            "lab_report",
-            "packing_list",
             "certificate_of_analysis",
-            "phytosanitary_certificate",
             "product_specification",
             "insurance_certificate",
             "purchase_order",
             "certificate_of_origin",
-            "other",
             name="document_type_enum",
         ),
         nullable=False,
@@ -134,4 +129,3 @@ class Document(Base):
             f"<Document id={self.id} order_id={self.order_id} "
             f"type='{self.document_type}'>"
         )
-

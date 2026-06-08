@@ -211,7 +211,13 @@ CREATE TABLE documents (
         'PHYTOSANITARY_CERTIFICATE',
         'LAB_REPORT',
         'PACKING_LIST',
-        'OTHER'
+        'OTHER',
+        'bill_of_lading',
+        'certificate_of_analysis',
+        'product_specification',
+        'insurance_certificate',
+        'purchase_order',
+        'certificate_of_origin'
     ) NOT NULL,
 
     file_name VARCHAR(255),
