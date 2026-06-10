@@ -13,7 +13,7 @@ function graphql(query, variables = {}) {
 async function main() {
   const mut = `mutation($sid: String!, $in: ServiceInstanceUpdateInput!) { serviceInstanceUpdate(serviceId: $sid, input: $in) }`;
   
-  // Set rootDirectory to backend, keep RAILPACK so it auto-detects Dockerfile in backend/
+  // Switch backend to RAILPACK auto-detect with rootDirectory "backend"
   const backend = await graphql(mut, {
     sid: "58e77560-0286-4f5d-9778-e5d32d64f5c6",
     in: { 
