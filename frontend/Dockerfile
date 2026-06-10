@@ -9,6 +9,9 @@ RUN npm ci
 
 # Copy source code and build Vite production bundle
 COPY . .
+
+# Accept VITE_API_BASE_URL build arg from Railway
+ARG VITE_API_BASE_URL
 RUN npm run build
 
 # ── Stage 2: Serve the build folder with Nginx ──────────────────────────────
@@ -17,11 +20,7 @@ FROM nginx:alpine
 # Copy build output to Nginx directory
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy Railway-specific Nginx config template
-COPY railway.conf /etc/nginx/templates/default.conf.template
-
-# Railway assigns PORT dynamically — default to 80
-ENV PORT=80
-EXPOSE ${PORT}
+# Copy Railway-specific Nginx config
+COPY railway.conf /etc/nginx/conf.d/default.conf
 
 CMD ["nginx", "-g", "daemon off;"]

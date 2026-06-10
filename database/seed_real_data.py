@@ -91,10 +91,10 @@ def main():
         # Seed Users
         print("\nSeeding Platform Users...")
         internal_users = [
-            ("Poonam", "poonam.fittree@gmail.com", "WAREHOUSE", "Warehouse@1234", "+91-9999911111"),
-            ("Poonam QA", "poonam.qa.fittree@gmail.com", "QA", "QA@1234", "+91-9999922222"),
-            ("Poonam Docs", "poonam.docs.fittree@gmail.com", "DOCUMENTATION", "Document@1234", "+91-9999933333"),
-            ("Kunj Mistry", "kunjalpesh@gmail.com", "SUPER_ADMIN", "Iamtheadmin@1234", "+91-9999944444")
+            ("Poonam", "poonam.fittree@gmail.com", "WAREHOUSE", "Warehouse@1234", "+91-7426866027"),
+            ("Poonam QA", "poonam.qa.fittree@gmail.com", "QA", "QA@1234", "+91-7426866027"),
+            ("Poonam Docs", "poonam.docs.fittree@gmail.com", "DOCUMENTATION", "Document@1234", "+91-7426866027"),
+            ("Kunj Mistry", "kunjalpesh@gmail.com", "SUPER_ADMIN", "Iamtheadmin@1234", "+91-8866816365")
         ]
         
         for name, email, role, pwd, phone in internal_users:

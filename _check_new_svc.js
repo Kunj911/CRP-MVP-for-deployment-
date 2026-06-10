@@ -1,9 +1,5 @@
 const https = require('https');
-// Token for queries
 const QUERY_TOKEN = 'Ff78e7Ld4hZV3HPGFmWskOXW1qIB8xLnW5oTKaHoyhj';
-// Token for mutations
-const MUTATION_TOKEN = 'tWzzzCqM6Bs1c9SORHeXAm2Ye0gueAOsRxPwSgOj1c4';
-
 function gql(q, v, token) {
   return new Promise((r,j) => {
     const d = JSON.stringify({query:q,variables:v});
@@ -13,10 +9,9 @@ function gql(q, v, token) {
   });
 }
 
-const BACKEND_SERVICE = '58e77560-0286-4f5d-9778-e5d32d64f5c6';
+const BACKEND_SERVICE = '0850b159-e772-41d2-8e40-0488b4b8e377';
 
 async function main() {
-  // First, get the service instance IDs
   const svcQuery = `query($sid: String!) {
     service(id: $sid) {
       id name
@@ -37,25 +32,5 @@ async function main() {
   const svc = await gql(svcQuery, { sid: BACKEND_SERVICE }, QUERY_TOKEN);
   console.log('Current service config:');
   console.log(JSON.stringify(svc, null, 2));
-  
-  const edges = svc.data?.service?.serviceInstances?.edges || [];
-  if (edges.length) {
-    const instance = edges[0].node;
-    const instanceId = instance.id;
-    console.log('\nInstance ID:', instanceId);
-    
-    // Try updating the instance - set builder to NIXPACKS to match railway.json
-    const updateMut = `mutation($iid: String!, $in: ServiceInstanceUpdateInput!) {
-      serviceInstanceUpdate(serviceId: $iid, input: $in)
-    }`;
-    const result = await gql(updateMut, {
-      iid: instanceId,
-      in: {
-        builder: "NIXPACKS",
-        dockerfilePath: null
-      }
-    }, MUTATION_TOKEN);
-    console.log('\nUpdate result:', JSON.stringify(result, null, 2));
-  }
 }
 main().catch(console.error);

@@ -90,6 +90,10 @@ class Settings(BaseSettings):
     PROMETHEUS_METRICS_ENABLED: bool = False
     METRICS_PASSWORD: str = "metrics-secure-password-123!"
 
+    # ── Seed API (one-time dataset import) ──────────────────────────────────────
+    SEED_API_KEY: str = ""
+    SEED_DEFAULT_PASSWORD: str = "Temp@123"
+
     # ── Async Workers (Celery) ────────────────────────────────────────────────
     CELERY_ENABLED: bool = False
 
@@ -138,7 +142,7 @@ class Settings(BaseSettings):
 
     # ── SMTP / Email Configuration ────────────────────────────────────────
     SMTP_ENABLED: bool = True
-    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_HOST: str = "smtp-relay.brevo.com"
     SMTP_PORT: int = 587
     SMTP_USERNAME: str = ""
     SMTP_PASSWORD: str = ""
@@ -153,8 +157,8 @@ class Settings(BaseSettings):
     EMAIL_FROM_NAME: str = ""
     RESEND_API_KEY: str = ""
     RESEND_API_URL: str = "https://api.resend.com/emails"
-    FRONTEND_APP_URL: str = "http://localhost:5173"
-    BACKEND_URL: str = "http://localhost:8000"
+    FRONTEND_APP_URL: str = "https://live-trace-fittree.up.railway.app"
+    BACKEND_URL: str = "https://backend-production-3b9b2.up.railway.app"
 
     SMTP_USER: str = ""
     SMTP_TLS: bool = True

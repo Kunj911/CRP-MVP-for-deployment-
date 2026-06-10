@@ -24,7 +24,7 @@ export default function SettingsPage() {
   const fetchSessions = async () => {
     try {
       setLoadingSessions(true)
-      const res = await apiClient.get('/api/v1/auth/sessions')
+      const res = await apiClient.get('/auth/sessions')
       setSessions(res.data)
     } catch (err) {
       toast.error('Failed to load active sessions')
@@ -41,7 +41,7 @@ export default function SettingsPage() {
   const handleRevokeSession = async (sessionId, isCurrent) => {
     try {
       setRevokingId(sessionId)
-      await apiClient.post('/api/v1/auth/sessions/revoke', { session_id: sessionId })
+      await apiClient.post('/auth/sessions/revoke', { session_id: sessionId })
       toast.success('Session revoked successfully')
       
       if (isCurrent) {
@@ -61,7 +61,7 @@ export default function SettingsPage() {
   const handleRevokeOthers = async () => {
     try {
       setRevokingOthers(true)
-      await apiClient.post('/api/v1/auth/sessions/revoke-others')
+      await apiClient.post('/auth/sessions/revoke-others')
       toast.success('Other sessions revoked successfully')
       fetchSessions()
     } catch (err) {
@@ -75,7 +75,7 @@ export default function SettingsPage() {
   const handleStartMfaSetup = async () => {
     try {
       setLoadingMfa(true)
-      const res = await apiClient.post('/api/v1/auth/mfa/setup')
+      const res = await apiClient.post('/auth/mfa/setup')
       setMfaSecret(res.data.secret)
       setMfaQrUri(res.data.provisioning_uri)
       setMfaStep('setup')
@@ -95,7 +95,7 @@ export default function SettingsPage() {
     }
     try {
       setLoadingMfa(true)
-      await apiClient.post('/api/v1/auth/mfa/verify', { otp_code: otpCode })
+      await apiClient.post('/auth/mfa/verify', { otp_code: otpCode })
       toast.success('MFA enabled successfully!')
       setMfaEnabled(true)
       setMfaStep('status')
