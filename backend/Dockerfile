@@ -10,9 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy dependencies list and compile
-# NOTE: Build context is the REPO ROOT (not backend/)
-COPY Docs/requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+COPY requirements/ ./requirements/
+RUN pip install --no-cache-dir --user -r requirements/production.txt
 
 # ── Stage 2: Production image ────────────────────────────────────────────────
 FROM python:3.11-slim
@@ -28,12 +27,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy installed pip packages from builder
 COPY --from=builder /root/.local /root/.local
 
-# Copy application code (paths relative to repo root)
-COPY backend/app ./app
-COPY backend/templates ./templates
-COPY backend/main.py .
-COPY backend/alembic.ini .
-COPY backend/alembic ./alembic
+# Copy application code
+COPY app ./app
+COPY templates ./templates
+COPY main.py .
+COPY alembic.ini .
+COPY alembic ./alembic
 
 # Create uploads directory (ephemeral on Railway)
 RUN mkdir -p /app/uploads
@@ -46,7 +45,7 @@ ENV PORT=8000
 EXPOSE ${PORT}
 
 # Health check for Railway
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:${PORT}/health || exit 1
 
 # Start with shell form so ${PORT} is expanded at runtime
