@@ -6,15 +6,6 @@ import useAuthStore from '../../store/authStore'
 import { authApi } from '../../api'
 import { toast } from 'sonner'
 
-// Demo credentials helper (pre-fills form only — actual auth goes through backend)
-const DEMO = [
-  { label: 'Admin',     email: 'admin@livetrace.com',     password: 'Admin@123',      role: 'ADMIN'     },
-  { label: 'Customer',  email: 'client1@spiceworld.com',   password: 'Spiceworld@123', role: 'CUSTOMER'  },
-  { label: 'Warehouse', email: 'warehouse@livetrace.com',  password: 'Warehouse@123',  role: 'WAREHOUSE' },
-  { label: 'QA',        email: 'qa@livetrace.com',         password: 'QA@123',         role: 'QA'        },
-  { label: 'Docs',      email: 'docs@livetrace.com',       password: 'Docs@123',       role: 'DOCUMENTATION' },
-]
-
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -158,22 +149,6 @@ export default function LoginPage() {
                   Sign in
                 </Button>
               </form>
-
-              {/* Demo quick-fill */}
-              <div className="mt-6 pt-5 border-t border-beige-200">
-                <p className="text-[11px] text-gray-400 mb-2 text-center font-body uppercase tracking-wide">Demo credentials</p>
-                <div className="flex gap-2 flex-wrap justify-center">
-                  {DEMO.map((d) => (
-                    <button
-                      key={d.role}
-                      onClick={() => { setEmail(d.email); setPassword(d.password) }}
-                      className="text-[11px] px-2.5 py-1 rounded-full bg-beige-100 text-gray-600 hover:bg-saffron-50 hover:text-saffron-700 border border-beige-200 font-body transition-colors"
-                    >
-                      {d.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </>
           ) : (
             <>
