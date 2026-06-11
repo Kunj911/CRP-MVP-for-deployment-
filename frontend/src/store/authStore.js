@@ -37,9 +37,18 @@ const useAuthStore = create((set, get) => ({
 
   /**
    * Clear all auth state. Called on logout or session expiry.
+   * Attempts to notify the backend (fire-and-forget) to revoke the session.
    */
   logout: () => {
+    // Notify backend to revoke the refresh token (best-effort, non-blocking)
+    try {
+      import('../api/client').then(({ default: apiClient }) => {
+        apiClient.post('/auth/logout', {}, { _silentError: true }).catch(() => {})
+      }).catch(() => {})
+    } catch {}
+
     Cookies.remove('session_exists')
+    Cookies.remove('csrf_token')
     // Stop background notification polling to prevent memory leaks and 401 spam
     useNotificationStore.getState().stopPolling()
     set({ user: null, accessToken: null, isSessionLoading: false })

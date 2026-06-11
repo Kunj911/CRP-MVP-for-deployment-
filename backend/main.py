@@ -158,6 +158,9 @@ def create_app() -> FastAPI:
     _register_routes(app)
 
     # Mount static uploads directory if using local storage
+    # NOTE: Files are publicly accessible at the URL level when using local storage.
+    # For authenticated file serving in production, use S3/Cloudinary with signed URLs
+    # or serve files through the API (e.g., /api/v1/media/{id}/download).
     if settings.STORAGE_BACKEND == "local":
         from fastapi.staticfiles import StaticFiles
         import os

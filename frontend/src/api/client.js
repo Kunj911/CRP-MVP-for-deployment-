@@ -57,15 +57,40 @@ apiClient.interceptors.request.use(
       if (payload && payload.exp) {
         const isNearExpiry = (payload.exp * 1000) - Date.now() < 30000 // 30s buffer
         if (isNearExpiry) {
+          // If a refresh is already in progress, wait for it
+          if (isRefreshing) {
+            try {
+              const newToken = await new Promise((resolve, reject) => {
+                failedQueue.push({ resolve, reject })
+              })
+              accessToken = newToken
+              config.headers.Authorization = `Bearer ${newToken}`
+              return config
+            } catch {
+              accessToken = null
+              logout()
+              return config
+            }
+          }
+
+          isRefreshing = true
           try {
+            const csrfToken = Cookies.get('csrf_token')
             const res = await axios.post(`${API_BASE_URL}/auth/refresh`, null, {
               withCredentials: true,
+              headers: {
+                ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
+              },
             })
             accessToken = res.data.access_token
             setAccessToken(accessToken)
+            processQueue(null, accessToken)
           } catch (err) {
             accessToken = null
+            processQueue(err, null)
             logout()
+          } finally {
+            isRefreshing = false
           }
         }
       }
@@ -136,8 +161,12 @@ apiClient.interceptors.response.use(
 
       try {
         // Attempt to refresh — cookie is sent automatically
+        const csrfToken = Cookies.get('csrf_token')
         const res = await axios.post(`${API_BASE_URL}/auth/refresh`, null, {
           withCredentials: true,
+          headers: {
+            ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
+          },
         })
 
         const newAccessToken = res.data.access_token

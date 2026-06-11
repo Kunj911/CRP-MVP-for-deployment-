@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Search, Upload, Image, FileText, CheckCircle2, Loader2 } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import { ordersApi, uploadsApi } from '../../api'
+import useAuthStore from '../../store/authStore'
 
 const PHOTO_CATS = [
   { value: 'PROCUREMENT_IMAGE', label: '🌾 Procurement', hint: 'Raw material sourcing' },
@@ -11,6 +12,13 @@ const PHOTO_CATS = [
 ]
 
 export default function UploadPage() {
+  const role = useAuthStore((s) => s.user?.role)
+  const isWarehouse = role === 'WAREHOUSE'
+  const isDocs = role === 'DOCUMENTATION'
+  const TABS = [
+    ...(!isDocs ? [{ key: 'photo', label: '📷 Photo' }] : []),
+    ...(!isWarehouse ? [{ key: 'document', label: '📄 Document' }] : []),
+  ]
   const [step, setStep] = useState(1)     // 1: select order, 2: select type, 3: upload
   const [uploadTab, setUploadTab] = useState('photo')
   const [orders, setOrders] = useState([])
@@ -198,11 +206,9 @@ export default function UploadPage() {
           </p>
 
           {/* Tab */}
+          {TABS.length > 1 && (
           <div className="flex bg-beige-100 rounded-lg p-1 gap-1">
-            {[
-              { key: 'photo', label: '📷 Photo' },
-              { key: 'document', label: '📄 Document' },
-            ].map(({ key, label }) => (
+            {TABS.map(({ key, label }) => (
               <button
                 key={key}
                 onClick={() => {
@@ -217,6 +223,7 @@ export default function UploadPage() {
               </button>
             ))}
           </div>
+          )}
 
           {uploadTab === 'photo' ? (
             <div className="grid grid-cols-2 gap-2">

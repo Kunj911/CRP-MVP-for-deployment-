@@ -36,20 +36,22 @@ class ShipmentStatus(str, Enum):
     READY_FOR_SHIPMENT  = "READY_FOR_SHIPMENT"
     SHIPPED             = "SHIPPED"
     DELIVERED           = "DELIVERED"
+    CANCELLED           = "CANCELLED"
 
 
 # ── Status transition rules ───────────────────────────────────────────────────
 # Enforced in service layer — only forward transitions allowed.
 
 VALID_TRANSITIONS: dict[ShipmentStatus, list[ShipmentStatus]] = {
-    ShipmentStatus.CREATED:            [ShipmentStatus.PROCUREMENT],
-    ShipmentStatus.PROCUREMENT:        [ShipmentStatus.QA_TESTING],
-    ShipmentStatus.QA_TESTING:         [ShipmentStatus.PACKAGING],
-    ShipmentStatus.PACKAGING:          [ShipmentStatus.DOCUMENTATION],
-    ShipmentStatus.DOCUMENTATION:      [ShipmentStatus.READY_FOR_SHIPMENT],
-    ShipmentStatus.READY_FOR_SHIPMENT: [ShipmentStatus.SHIPPED],
+    ShipmentStatus.CREATED:            [ShipmentStatus.PROCUREMENT, ShipmentStatus.CANCELLED],
+    ShipmentStatus.PROCUREMENT:        [ShipmentStatus.QA_TESTING, ShipmentStatus.CANCELLED],
+    ShipmentStatus.QA_TESTING:         [ShipmentStatus.PACKAGING, ShipmentStatus.CANCELLED],
+    ShipmentStatus.PACKAGING:          [ShipmentStatus.DOCUMENTATION, ShipmentStatus.CANCELLED],
+    ShipmentStatus.DOCUMENTATION:      [ShipmentStatus.READY_FOR_SHIPMENT, ShipmentStatus.CANCELLED],
+    ShipmentStatus.READY_FOR_SHIPMENT: [ShipmentStatus.SHIPPED, ShipmentStatus.CANCELLED],
     ShipmentStatus.SHIPPED:            [ShipmentStatus.DELIVERED],
     ShipmentStatus.DELIVERED:          [],   # terminal state
+    ShipmentStatus.CANCELLED:          [],   # terminal state — cannot revert
 }
 
 

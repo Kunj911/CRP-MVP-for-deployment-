@@ -88,6 +88,7 @@ class Order(Base):
             "READY_FOR_SHIPMENT",
             "SHIPPED",
             "DELIVERED",
+            "CANCELLED",
             name="shipment_status_enum",
         ),
         default="CREATED",

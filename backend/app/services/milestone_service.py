@@ -357,12 +357,44 @@ def update_milestone_status(
         milestone.completed_by = current_user.id
         milestone.completed_at = datetime.now(UTC)
 
+        # Log OrderEvent for timeline
+        from app.models.order_event import OrderEvent
+        from app.schemas.milestone import STAGE_LABELS
+        stage_enum = MilestoneStage(milestone.stage_name)
+        stage_label = STAGE_LABELS.get(stage_enum, milestone.stage_name)
+        event = OrderEvent(
+            order_id=milestone.order_id,
+            event_type="milestone_completed",
+            description=f"Milestone '{stage_label}' completed by {current_user.full_name}."
+        )
+        db.add(event)
+
+        # Auto-advance next milestone to IN_PROGRESS
+        try:
+            current_index = STAGE_SEQUENCE.index(stage_enum) if stage_enum in STAGE_SEQUENCE else -1
+            if current_index >= 0 and current_index + 1 < len(STAGE_SEQUENCE):
+                next_stage = STAGE_SEQUENCE[current_index + 1]
+                next_milestone = db.query(Milestone).filter(
+                    Milestone.order_id == milestone.order_id,
+                    Milestone.stage_name == next_stage.value,
+                    Milestone.status == MilestoneStatus.PENDING.value
+                ).first()
+                if next_milestone:
+                    next_milestone.status = MilestoneStatus.IN_PROGRESS.value
+                    _log_audit(
+                        db=db,
+                        user_id=current_user.id,
+                        action_type="UPDATE",
+                        target_id=next_milestone.id,
+                        order_id=next_milestone.order_id,
+                        description=f"Auto-advanced milestone '{next_milestone.stage_name}' to IN_PROGRESS after completing '{milestone.stage_name}'",
+                    )
+        except Exception as _advance_exc:
+            logger.error("Failed to auto-advance next milestone: %s", _advance_exc)
+
         # ── Notification hook ──────────────────────────────────────────────
         try:
             from app.services.notification_service import send_milestone_alert
-            from app.schemas.milestone import STAGE_LABELS
-            stage_enum = MilestoneStage(milestone.stage_name)
-            stage_label = STAGE_LABELS.get(stage_enum, milestone.stage_name)
             send_milestone_alert(
                 order_id=milestone.order_id,
                 milestone_stage=milestone.stage_name,

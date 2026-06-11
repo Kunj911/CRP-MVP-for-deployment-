@@ -542,36 +542,44 @@ def cancel_order(
 
     order = _get_order_or_404(order_id, db)
 
-    if order.shipment_status in {
-        ShipmentStatus.SHIPPED.value,
-        ShipmentStatus.DELIVERED.value,
-    }:
+    current_status = ShipmentStatus(order.shipment_status)
+
+    # Validate transition using VALID_TRANSITIONS (maintains single source of truth)
+    if ShipmentStatus.CANCELLED not in VALID_TRANSITIONS.get(current_status, []):
+        allowed = [s.value for s in VALID_TRANSITIONS.get(current_status, [])]
         raise ValidationException(
-            f"Cannot cancel an order with status '{order.shipment_status}'"
+            f"Cannot cancel an order with current status '{current_status.value}'. "
+            f"Allowed transitions: {allowed if allowed else ['none — terminal status']}"
         )
 
     old_status = order.shipment_status
+    order.shipment_status = ShipmentStatus.CANCELLED.value
 
-    # Use DELIVERED as the closest available terminal state;
-    # in a real system you'd add a CANCELLED status to the DB ENUM.
-    # For now we log it clearly and leave the order in its current state
-    # pending a DB migration to add CANCELLED to the ENUM.
+    # Log OrderEvent
+    from app.models.order_event import OrderEvent
+    event = OrderEvent(
+        order_id=order.id,
+        event_type="status_changed",
+        description=f"Order cancelled by {current_user.full_name}. Previous status: {old_status}."
+    )
+    db.add(event)
+
     _log_audit(
         db=db,
         user_id=current_user.id,
         action_type="DELETE",
         target_id=order.id,
         description=(
-            f"Order '{order.order_code}' cancellation requested by "
-            f"user_id={current_user.id}. Status was: {old_status}. "
-            "Pending CANCELLED status addition to DB schema."
+            f"Order '{order.order_code}' cancelled by "
+            f"user_id={current_user.id}. Status was: {old_status}."
         ),
     )
 
     db.commit()
+    db.refresh(order)
     logger.warning(
-        "Order cancellation requested: order_id=%s by user_id=%s",
-        order.id, current_user.id,
+        "Order cancelled: order_id=%s by user_id=%s (was %s)",
+        order.id, current_user.id, old_status,
     )
     return order
 

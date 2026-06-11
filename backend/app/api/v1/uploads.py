@@ -20,7 +20,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, File, Form, Query, UploadFile, Request, Header, HTTPException
 
-from app.api.deps import CurrentUser, DbSession
+from app.api.deps import CurrentUser, DbSession, PhotoUploaderUser, DocUploaderUser, MediaDeleterUser, DocDeleterUser
 from app.core.limiter import limiter
 from app.config.settings import get_settings
 from app.schemas.common import SuccessResponse
@@ -61,7 +61,7 @@ router = APIRouter(tags=["Uploads"])
 @limiter.limit("15/minute")
 async def upload_photo(
     request: Request,
-    current_user: CurrentUser,
+    current_user: PhotoUploaderUser,
     db: DbSession,
     file: UploadFile = File(..., description="Image file (JPEG/PNG/WebP/HEIC, max 10MB)"),
     content_length: int = Header(..., alias="content-length"),
@@ -103,7 +103,7 @@ async def upload_photo(
 @limiter.limit("10/minute")
 async def upload_document(
     request: Request,
-    current_user: CurrentUser,
+    current_user: DocUploaderUser,
     db: DbSession,
     file: UploadFile = File(..., description="Document file (PDF/XLSX/DOCX, max 25MB)"),
     content_length: int = Header(..., alias="content-length"),
@@ -224,7 +224,7 @@ def get_order_checklist(
 )
 def delete_media(
     media_id: int,
-    current_user: CurrentUser,
+    current_user: MediaDeleterUser,
     db: DbSession,
 ) -> SuccessResponse[str]:
     upload_service.delete_media_file(
@@ -251,7 +251,7 @@ def delete_media(
 )
 def delete_document(
     doc_id: int,
-    current_user: CurrentUser,
+    current_user: DocDeleterUser,
     db: DbSession,
 ) -> SuccessResponse[str]:
     upload_service.delete_document(

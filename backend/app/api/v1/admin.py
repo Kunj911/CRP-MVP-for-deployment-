@@ -2,9 +2,10 @@ import logging
 from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Header
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.api.deps import get_db, SuperAdminUser
 from app.config.settings import get_settings
 from app.core.security import hash_password
 from app.models.customer import Customer
@@ -48,6 +49,7 @@ STAGES = [
 STATUS_RANK = {
     "CREATED": -1, "PROCUREMENT": 0, "QA_TESTING": 2, "PACKAGING": 4,
     "DOCUMENTATION": 5, "READY_FOR_SHIPMENT": 6, "SHIPPED": 7, "DELIVERED": 9,
+    "CANCELLED": 10,
 }
 
 DOC_REQUIREMENTS = {
@@ -298,6 +300,44 @@ def seed_demo_database(
     msg = "Seeded: " + ", ".join(f"{k}={v}" for k, v in counts.items())
     logger.info("Seed complete: %s", msg)
     return SuccessResponse(data=msg, message="Database seeded successfully")
+
+
+class DeactivateUserRequest(BaseModel):
+    user_id: int
+    deactivate: bool = True
+
+
+@router.post(
+    "/users/deactivate",
+    response_model=SuccessResponse[str],
+    summary="Activate or deactivate a user account (SUPER_ADMIN only)",
+)
+def deactivate_user(
+    body: DeactivateUserRequest,
+    current_user: SuperAdminUser,
+    db: Session = Depends(get_db),
+) -> SuccessResponse[str]:
+    user = db.query(User).filter(User.id == body.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.role == "SUPER_ADMIN":
+        raise HTTPException(status_code=403, detail="Cannot deactivate another SUPER_ADMIN")
+
+    user.is_active = body.deactivate
+    action = "activated" if body.deactivate else "deactivated"
+    db.add(AuditLog(
+        user_id=current_user.id,
+        action_type="UPDATE",
+        target_table="users",
+        target_id=user.id,
+        description=f"User '{user.email}' {action} by {current_user.full_name}.",
+    ))
+    db.commit()
+    logger.info("User %s %s: user_id=%s by %s", action, user.email, user.id, current_user.email)
+    return SuccessResponse(
+        data=f"User '{user.email}' {action} successfully",
+        message=f"User account has been {action}.",
+    )
 
 
 def _stage_role(stage_name: str) -> str | None:

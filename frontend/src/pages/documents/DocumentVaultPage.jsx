@@ -57,6 +57,24 @@ export default function DocumentVaultPage() {
     }
   }, [])
 
+  const handleDelete = async (doc) => {
+    try {
+      await documentsApi.delete(doc.id)
+      setOrdersWithDocs((prev) =>
+        prev
+          .map((o) => ({
+            ...o,
+            documents: o.documents.filter((d) => d.id !== doc.id),
+          }))
+          .filter((o) => o.documents.length > 0)
+      )
+    } catch (error) {
+      console.error('Delete failed:', error)
+      alert(error.response?.data?.error?.message || 'Failed to delete document.')
+      throw error
+    }
+  }
+
   const handleDownload = async (doc) => {
     try {
       const response = await documentsApi.download(doc.id)
@@ -127,6 +145,7 @@ export default function DocumentVaultPage() {
                 <DocumentVault 
                   documents={order.documents} 
                   onDownload={handleDownload}
+                  onDelete={handleDelete}
                 />
               </div>
             </div>

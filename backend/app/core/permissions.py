@@ -1,25 +1,35 @@
 """
 app/core/permissions.py
 
-Role-Based Access Control (RBAC) definitions.
+DEPRECATED — This file contains dead code that is NOT used by any route handler.
+Route-level access control is now enforced via `app/api/deps.py` role-typed
+dependencies (CurrentUser, AdminUser, PhotoUploaderUser, etc.) and inline checks
+in service-layer functions.
 
-Permission sets define what each role can do.
-Use the `require_roles` dependency in route handlers to enforce access.
+This file is kept for reference only and will be removed in the next major release.
 """
 
-from functools import wraps
 from typing import Callable
 
 from app.core.exceptions import ForbiddenException
 from app.utils.constants import UserRole
 
 
-# ── Permission sets per role ──────────────────────────────────────────────────
-#
-# Structure: { role: set_of_permissions }
-# Permissions are plain strings — "resource:action"
+# ── Permission sets per role (REFERENCE ONLY — NOT ACTIVE) ────────────────────
+# These are not loaded or checked anywhere in the current codebase.
 
 ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
+    UserRole.SUPER_ADMIN: {
+        "orders:read", "orders:write", "orders:delete",
+        "milestones:read", "milestones:write",
+        "uploads:photo", "uploads:document",
+        "documents:read", "documents:delete",
+        "qa:read", "qa:write",
+        "customers:read", "customers:write",
+        "notifications:read",
+        "audit:read",
+        "users:read", "users:write",
+    },
     UserRole.ADMIN: {
         "orders:read", "orders:write", "orders:delete",
         "milestones:read", "milestones:write",
@@ -42,6 +52,7 @@ ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
         "orders:read",
         "milestones:read", "milestones:write",
         "uploads:photo",
+        "uploads:document",
         "documents:read",
         "qa:read", "qa:write",
         "notifications:read",

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { X, Upload, Image, FileText, CheckCircle2 } from 'lucide-react'
 import Button from '../ui/Button'
 import { uploadsApi } from '../../api'
+import useAuthStore from '../../store/authStore'
 
 const PHOTO_CATEGORIES = [
   { value: 'PROCUREMENT_IMAGE', label: '🌾 Procurement',  color: 'bg-amber-50 border-amber-200' },
@@ -25,6 +26,13 @@ const DOC_TYPES = [
 ]
 
 export default function UploadModal({ isOpen, onClose, orderId, orderCode, onSuccess, initialTab = 'photo', initialDocType = null }) {
+  const role = useAuthStore((s) => s.user?.role)
+  const isWarehouse = role === 'WAREHOUSE'
+  const isDocs = role === 'DOCUMENTATION'
+  const TABS = [
+    ...(!isDocs ? [{ key:'photo', label:'📷 Photo', icon: Image }] : []),
+    ...(!isWarehouse ? [{ key:'document', label:'📄 Document', icon: FileText }] : []),
+  ]
   const [tab, setTab] = useState(initialTab)          // 'photo' | 'document'
   const [category, setCategory] = useState(null)
   const [docType, setDocType] = useState(initialDocType)
@@ -36,14 +44,15 @@ export default function UploadModal({ isOpen, onClose, orderId, orderCode, onSuc
 
   useEffect(() => {
     if (isOpen) {
-      setTab(initialTab)
+      const available = TABS.length ? TABS[0].key : 'photo'
+      setTab(TABS.some((t) => t.key === initialTab) ? initialTab : available)
       setDocType(initialDocType)
       setCategory(null)
       setFile(null)
       setPreview(null)
       setDone(false)
     }
-  }, [isOpen, initialTab, initialDocType])
+  }, [isOpen, initialTab, initialDocType, role])
 
   if (!isOpen) return null
 
@@ -120,7 +129,7 @@ export default function UploadModal({ isOpen, onClose, orderId, orderCode, onSuc
           <div className="px-5 py-4 space-y-5">
             {/* Tab switcher */}
             <div className="flex bg-beige-100 rounded-lg p-1 gap-1">
-              {[{ key:'photo', label:'📷 Photo', icon: Image }, { key:'document', label:'📄 Document', icon: FileText }].map(({ key, label }) => (
+              {TABS.map(({ key, label }) => (
                 <button
                   key={key}
                   onClick={() => { setTab(key); setFile(null); setPreview(null); setCategory(null); setDocType(null) }}

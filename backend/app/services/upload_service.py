@@ -33,6 +33,8 @@ import logging
 import os
 import tempfile
 import uuid
+from datetime import datetime, UTC
+
 import magic
 from typing import List, Optional
 
@@ -50,9 +52,11 @@ from app.core.exceptions import (
 from app.models.audit_log import AuditLog
 from app.models.document import Document
 from app.models.media_file import MediaFile
+from app.models.milestone import Milestone
 from app.models.order import Order
 from app.models.user import User
 from app.models.order_document_requirement import OrderDocumentRequirement
+from app.schemas.milestone import MilestoneStage, MilestoneStatus
 from app.schemas.upload import (
     DocumentResponse,
     DocumentType,
@@ -74,8 +78,16 @@ settings = get_settings()
 
 # ── Role rules ────────────────────────────────────────────────────────────────
 _PHOTO_UPLOAD_ROLES  = {"SUPER_ADMIN", "ADMIN", "WAREHOUSE", "QA"}
-_DOC_UPLOAD_ROLES    = {"SUPER_ADMIN", "ADMIN", "DOCUMENTATION"}
+_DOC_UPLOAD_ROLES    = {"SUPER_ADMIN", "ADMIN", "DOCUMENTATION", "QA"}
 _DELETE_ROLES        = {"SUPER_ADMIN", "ADMIN"}
+
+# Maps photo media_type → milestone stage for auto-completion
+_MEDIA_TO_MILESTONE = {
+    "PROCUREMENT_IMAGE": "PROCUREMENT",
+    "QA_IMAGE":          "QA_TESTING",
+    "PACKAGING_IMAGE":   "PACKAGING_COMPLETED",
+    "LOADING_IMAGE":     "CONTAINER_LOADING",
+}
 
 # INPUT-001: Server-side MIME → extension mapping
 # Never trust the client-supplied file extension — derive it from detected MIME.
@@ -211,8 +223,11 @@ def _check_customer_storage_quota(db: Session, customer_id: int, new_file_size: 
     # Sum up existing MediaFiles size
     media_size = db.query(func.sum(MediaFile.file_size)).join(Order).filter(Order.customer_id == customer_id).scalar() or 0
 
-    # Sum up existing Documents size
-    doc_size = db.query(func.sum(Document.file_size)).join(Order).filter(Order.customer_id == customer_id).scalar() or 0
+    # Sum up existing Documents size (exclude soft-deleted)
+    doc_size = db.query(func.sum(Document.file_size)).join(Order).filter(
+        Order.customer_id == customer_id,
+        Document.is_deleted == False
+    ).scalar() or 0
 
     total_used = media_size + doc_size
 
@@ -334,6 +349,32 @@ async def upload_photo(
                 + (f" milestone_id={milestone_id}" if milestone_id else "")
             ),
         )
+
+        # Auto-complete milestone based on media_type
+        try:
+            target_stage_str = _MEDIA_TO_MILESTONE.get(media_type.value)
+            target_stage = MilestoneStage(target_stage_str) if target_stage_str else None
+            if target_stage:
+                photo_milestone = db.query(Milestone).filter(
+                    Milestone.order_id == order_id,
+                    Milestone.stage_name == target_stage.value,
+                    Milestone.status != MilestoneStatus.COMPLETED.value
+                ).first()
+                if photo_milestone:
+                    photo_milestone.status = MilestoneStatus.COMPLETED.value
+                    photo_milestone.completed_by = current_user.id
+                    photo_milestone.completed_at = datetime.now(UTC)
+                    _log_audit(
+                        db=db,
+                        user_id=current_user.id,
+                        action_type="UPDATE",
+                        target_table="milestones",
+                        target_id=photo_milestone.id,
+                        order_id=order_id,
+                        description=f"Auto-completed '{target_stage.value}' milestone via photo upload: type={media_type.value} file='{file.filename}'",
+                    )
+        except Exception as exc:
+            logger.error("Failed to auto-complete milestone for photo upload: %s", exc)
 
         db.commit()
         db.refresh(media_record)
@@ -526,6 +567,29 @@ async def upload_document(
             ),
         )
 
+        # Auto-complete DOCUMENTS_UPLOADED milestone
+        try:
+            docs_milestone = db.query(Milestone).filter(
+                Milestone.order_id == order_id,
+                Milestone.stage_name == MilestoneStage.DOCUMENTS_UPLOADED.value,
+                Milestone.status != MilestoneStatus.COMPLETED.value
+            ).first()
+            if docs_milestone:
+                docs_milestone.status = MilestoneStatus.COMPLETED.value
+                docs_milestone.completed_by = current_user.id
+                docs_milestone.completed_at = datetime.now(UTC)
+                _log_audit(
+                    db=db,
+                    user_id=current_user.id,
+                    action_type="UPDATE",
+                    target_table="milestones",
+                    target_id=docs_milestone.id,
+                    order_id=order_id,
+                    description=f"Auto-completed 'DOCUMENTS_UPLOADED' milestone via document upload: type={document_type.value} file='{file.filename}'",
+                )
+        except Exception as exc:
+            logger.error("Failed to auto-complete DOCUMENTS_UPLOADED milestone: %s", exc)
+
         db.commit()
         db.refresh(doc_record)
         logger.info(
@@ -642,6 +706,15 @@ def delete_media_file(
     except Exception as exc:
         logger.warning("Storage delete failed for media_id=%s: %s", media_id, exc)
 
+    # Log OrderEvent for milestone recalculation trigger
+    from app.models.order_event import OrderEvent
+    event = OrderEvent(
+        order_id=media.order_id,
+        event_type="media_deleted",
+        description=f"Photo '{media.file_name}' ({media.media_type}) deleted by {current_user.full_name}."
+    )
+    db.add(event)
+
     _log_audit(
         db=db,
         user_id=current_user.id,
@@ -649,7 +722,10 @@ def delete_media_file(
         target_table="media_files",
         target_id=media_id,
         order_id=media.order_id,
-        description=f"Media file deleted: media_id={media_id} file='{media.file_name}'",
+        description=(
+            f"Media file deleted: media_id={media_id} file='{media.file_name}' "
+            f"type={media.media_type} verification_status=N/A"
+        ),
     )
     db.delete(media)
     db.commit()
@@ -671,6 +747,12 @@ def delete_document(
     if not doc:
         raise NotFoundException("Document", doc_id)
 
+    # P7: Prevent deletion of approved documents (except ADMIN/SUPER_ADMIN)
+    if doc.status == "approved" and current_user.role not in _DELETE_ROLES:
+        raise ForbiddenException(
+            "Cannot delete an approved document. Reject it first, or ask an Admin."
+        )
+
     # LOGIC-003: IDOR protection — verify document belongs to an accessible order (via relationship mapping)
     order = doc.order
     if current_user.role == "CUSTOMER" and order:
@@ -678,6 +760,17 @@ def delete_document(
             raise ForbiddenException("You do not have access to this document")
 
     doc.is_deleted = True
+
+    # Delete file from storage
+    storage = get_storage()
+    try:
+        path = doc.storage_key
+        if not path:
+            path = doc.file_url.split("/uploads/", 1)[-1] if "/uploads/" in doc.file_url else ""
+        if path:
+            storage.delete(path)
+    except Exception as exc:
+        logger.warning("Storage delete failed for document_id=%s: %s", doc_id, exc)
 
     # Update OrderDocumentRequirement
     req = db.query(OrderDocumentRequirement).filter(
@@ -692,12 +785,16 @@ def delete_document(
         req.approved_by = None
         req.document_id = None
 
-    # Log OrderEvent
+    # Log OrderEvent for milestone recalculation
     from app.models.order_event import OrderEvent
     event = OrderEvent(
         order_id=doc.order_id,
         event_type="document_deleted",
-        description=f"Document '{doc.file_name}' ({doc.document_type}) deleted by {current_user.full_name}."
+        description=(
+            f"Document '{doc.file_name}' ({doc.document_type}) "
+            f"status={doc.status} "
+            f"deleted by {current_user.full_name}."
+        )
     )
     db.add(event)
 
@@ -708,10 +805,18 @@ def delete_document(
         target_table="documents",
         target_id=doc_id,
         order_id=doc.order_id,
-        description=f"Document soft-deleted: doc_id={doc_id} type={doc.document_type} file='{doc.file_name}'",
+        description=(
+            f"Document soft-deleted: doc_id={doc_id} "
+            f"type={doc.document_type} file='{doc.file_name}' "
+            f"verification_status={doc.status} "
+            f"deleted_by={current_user.full_name} deleted_by_role={current_user.role}"
+        ),
     )
     db.commit()
-    logger.info("Document soft-deleted: doc_id=%s by user_id=%s", doc_id, current_user.id)
+    logger.info(
+        "Document soft-deleted: doc_id=%s status=%s by user_id=%s role=%s",
+        doc_id, doc.status, current_user.id, current_user.role,
+    )
 
 
 # ── Document Checklist and Approval Workflows ─────────────────────────────────
@@ -809,6 +914,29 @@ def approve_document(doc_id: int, current_user: User, db: Session) -> Document:
     # Trigger Email Celery task
     from app.tasks.document_tasks import send_document_approved_email
     send_document_approved_email.delay(doc.order_id, doc.id)
+
+    # Auto-complete DOCUMENTS_UPLOADED milestone on approval (belt-and-suspenders)
+    try:
+        docs_milestone = db.query(Milestone).filter(
+            Milestone.order_id == doc.order_id,
+            Milestone.stage_name == MilestoneStage.DOCUMENTS_UPLOADED.value,
+            Milestone.status != MilestoneStatus.COMPLETED.value
+        ).first()
+        if docs_milestone:
+            docs_milestone.status = MilestoneStatus.COMPLETED.value
+            docs_milestone.completed_by = current_user.id
+            docs_milestone.completed_at = datetime.now(UTC)
+            _log_audit(
+                db=db,
+                user_id=current_user.id,
+                action_type="UPDATE",
+                target_table="milestones",
+                target_id=docs_milestone.id,
+                order_id=doc.order_id,
+                description=f"Auto-completed 'DOCUMENTS_UPLOADED' milestone via document approval: type={doc.document_type} file='{doc.file_name}'",
+            )
+    except Exception as exc:
+        logger.error("Failed to auto-complete DOCUMENTS_UPLOADED milestone on approval: %s", exc)
     
     db.commit()
     db.refresh(doc)

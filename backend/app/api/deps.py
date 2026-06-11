@@ -99,6 +99,10 @@ _STAFF_ROLES = {"SUPER_ADMIN", "ADMIN", "WAREHOUSE", "QA", "DOCUMENTATION"}
 _WAREHOUSE_ROLES = {"SUPER_ADMIN", "ADMIN", "WAREHOUSE"}
 _QA_ROLES = {"SUPER_ADMIN", "ADMIN", "QA"}
 _DOCS_ROLES = {"SUPER_ADMIN", "ADMIN", "DOCUMENTATION"}
+_PHOTO_UPLOAD_ROLES = {"SUPER_ADMIN", "ADMIN", "WAREHOUSE", "QA"}
+_DOC_UPLOAD_ROLES = {"SUPER_ADMIN", "ADMIN", "DOCUMENTATION", "QA"}
+_DOC_DELETE_ROLES = {"SUPER_ADMIN", "ADMIN", "DOCUMENTATION"}
+_MEDIA_DELETE_ROLES = {"SUPER_ADMIN", "ADMIN"}
 _CUSTOMER_ROLES = {"CUSTOMER"}
 
 
@@ -155,6 +159,34 @@ def require_docs(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
+def require_media_deleter(current_user: User = Depends(get_current_user)) -> User:
+    """ADMIN or SUPER_ADMIN (can delete media files)."""
+    if current_user.role not in _MEDIA_DELETE_ROLES:
+        raise ForbiddenException("Media deletion requires ADMIN or SUPER_ADMIN role")
+    return current_user
+
+
+def require_doc_deleter(current_user: User = Depends(get_current_user)) -> User:
+    """ADMIN, SUPER_ADMIN, or DOCUMENTATION (can delete documents)."""
+    if current_user.role not in _DOC_DELETE_ROLES:
+        raise ForbiddenException("Document deletion requires ADMIN, SUPER_ADMIN, or DOCUMENTATION role")
+    return current_user
+
+
+def require_photo_uploader(current_user: User = Depends(get_current_user)) -> User:
+    """ADMIN, WAREHOUSE, or QA (can upload photos)."""
+    if current_user.role not in _PHOTO_UPLOAD_ROLES:
+        raise ForbiddenException("Photo upload requires ADMIN, WAREHOUSE, or QA role")
+    return current_user
+
+
+def require_doc_uploader(current_user: User = Depends(get_current_user)) -> User:
+    """ADMIN, DOCUMENTATION, or QA (can upload documents)."""
+    if current_user.role not in _DOC_UPLOAD_ROLES:
+        raise ForbiddenException("Document upload requires ADMIN, DOCUMENTATION, or QA role")
+    return current_user
+
+
 def require_customer(current_user: User = Depends(get_current_user)) -> User:
     """CUSTOMER role only — for customer-facing read endpoints."""
     if current_user.role not in _CUSTOMER_ROLES:
@@ -172,4 +204,8 @@ StaffUser = Annotated[User, Depends(require_staff)]
 WarehouseUser = Annotated[User, Depends(require_warehouse)]
 QAUser = Annotated[User, Depends(require_qa)]
 DocsUser = Annotated[User, Depends(require_docs)]
+PhotoUploaderUser = Annotated[User, Depends(require_photo_uploader)]
+DocUploaderUser = Annotated[User, Depends(require_doc_uploader)]
+MediaDeleterUser = Annotated[User, Depends(require_media_deleter)]
+DocDeleterUser = Annotated[User, Depends(require_doc_deleter)]
 CustomerUser = Annotated[User, Depends(require_customer)]

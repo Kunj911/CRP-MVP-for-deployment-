@@ -11,6 +11,7 @@ from enum import Enum
 # ── User Roles ────────────────────────────────────────────────────────────────
 
 class UserRole(str, Enum):
+    SUPER_ADMIN = "super_admin"
     ADMIN = "admin"
     WAREHOUSE = "warehouse"
     QA = "qa"
