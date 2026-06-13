@@ -29,7 +29,6 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.orm import Session
 
-from app import services
 from app.core.limiter import limiter
 from app.api.deps import CurrentUser, DbSession, SuperAdminUser, get_current_user
 from app.models.user import User

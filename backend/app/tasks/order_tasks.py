@@ -23,56 +23,6 @@ settings = get_settings()
     retry_jitter=True,
     max_retries=5,
 )
-def send_order_created_email(self, order_id: int) -> None:
-    """
-    Notify customer contacts that a new order has been created.
-    """
-    logger.info("Executing send_order_created_email for order_id=%d", order_id)
-    db = SessionLocal()
-    try:
-        order = db.query(Order).filter(Order.id == order_id).first()
-        if not order:
-            logger.error("Order %d not found for order_created email task", order_id)
-            return
-
-        # Query active customer contacts
-        customer_users = db.query(User).filter(
-            User.customer_id == order.customer_id,
-            User.role == "CUSTOMER",
-            User.is_active == True
-        ).all()
-
-        for user in customer_users:
-            context = {
-                "user_name": user.full_name,
-                "customer_name": order.customer.company_name if order.customer else "Valued Customer",
-                "order_code": order.order_code,
-                "product_name": order.product_name,
-                "quantity": float(order.quantity) if order.quantity else 0.0,
-                "unit": order.unit or "",
-                "expected_dispatch_date": str(order.expected_dispatch_date) if order.expected_dispatch_date else "TBD",
-                "order_url": f"{settings.FRONTEND_APP_URL}/orders/{order.id}"
-            }
-            ok = send_template_email(
-                to_address=user.email,
-                subject=f"Order Confirmed: {order.order_code}",
-                template_name="order_created.html",
-                context=context,
-                fallback_text=f"New order {order.order_code} has been created and confirmed."
-            )
-            if not ok:
-                raise RuntimeError(f"Email delivery failed to {user.email}")
-    finally:
-        db.close()
-
-
-@celery_app.task(
-    bind=True,
-    autoretry_for=(Exception,),
-    retry_backoff=True,
-    retry_jitter=True,
-    max_retries=5,
-)
 def send_order_delivered_email(self, order_id: int) -> None:
     """
     Notify customer contacts that their order has been delivered.

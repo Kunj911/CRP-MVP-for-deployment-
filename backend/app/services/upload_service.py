@@ -76,6 +76,26 @@ from app.config.settings import get_settings
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
+
+def _queue_document_email(task_fn, *args) -> None:
+    """Queue document email via Celery if enabled, fallback to daemon thread."""
+    if settings.CELERY_ENABLED:
+        try:
+            task_fn.delay(*args)
+            return
+        except Exception as exc:
+            logger.error("Failed to queue email via Celery: %s. Falling back to daemon thread.", exc)
+
+    import threading
+
+    def _send():
+        try:
+            task_fn(*args)
+        except Exception as exc:
+            logger.error("Email task failed: %s", exc)
+
+    threading.Thread(target=_send, daemon=True).start()
+
 # ── Role rules ────────────────────────────────────────────────────────────────
 _PHOTO_UPLOAD_ROLES  = {"SUPER_ADMIN", "ADMIN", "WAREHOUSE", "QA"}
 _DOC_UPLOAD_ROLES    = {"SUPER_ADMIN", "ADMIN", "DOCUMENTATION", "QA"}
@@ -549,9 +569,9 @@ async def upload_document(
                 related_document_id=doc_record.id
             )
 
-        # Trigger async email
+        # Trigger async email (Celery with daemon thread fallback)
         from app.tasks.document_tasks import send_document_uploaded_email
-        send_document_uploaded_email.delay(order_id, doc_record.id)
+        _queue_document_email(send_document_uploaded_email, order_id, doc_record.id)
 
         # 10. Audit log
         _log_audit(
@@ -911,9 +931,9 @@ def approve_document(doc_id: int, current_user: User, db: Session) -> Document:
             related_document_id=doc.id
         )
         
-    # Trigger Email Celery task
+    # Trigger async email (Celery with daemon thread fallback)
     from app.tasks.document_tasks import send_document_approved_email
-    send_document_approved_email.delay(doc.order_id, doc.id)
+    _queue_document_email(send_document_approved_email, doc.order_id, doc.id)
 
     # Auto-complete DOCUMENTS_UPLOADED milestone on approval (belt-and-suspenders)
     try:
@@ -998,9 +1018,9 @@ def reject_document(doc_id: int, remarks: str, current_user: User, db: Session) 
             related_document_id=doc.id
         )
         
-    # Trigger Email Celery task
+    # Trigger async email (Celery with daemon thread fallback)
     from app.tasks.document_tasks import send_document_rejected_email
-    send_document_rejected_email.delay(doc.order_id, doc.id, remarks)
+    _queue_document_email(send_document_rejected_email, doc.order_id, doc.id, remarks)
     
     db.commit()
     db.refresh(doc)

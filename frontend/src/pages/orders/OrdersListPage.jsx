@@ -51,7 +51,6 @@ export default function OrdersListPage() {
       try {
         setLoading(true)
         setError(null)
-        console.log('TEMPORARY LOG: API request payload:', { page: 1, per_page: 100 })
         const res = await ordersApi.list({ page: 1, per_page: 100 })
         const data = Array.isArray(res.data?.data) ? res.data.data.map(normalizeOrder) : []
         if (isMounted) {
@@ -76,7 +75,6 @@ export default function OrdersListPage() {
   }, [])
 
   const filtered = useMemo(() => {
-    console.log('TEMPORARY LOG: Selected frontend filter value:', statusFilter)
     return orders.filter((o) => {
       const matchSearch =
         o.order_code.toLowerCase().includes(search.toLowerCase()) ||

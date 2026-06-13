@@ -11,7 +11,7 @@ Responsibilities:
   - Enforce no-duplicate stage rule per order
   - Enforce status transition rules (no skipping, no reverting)
   - Audit log every state change
-  - Trigger notification hook on COMPLETED (notification_service stub)
+  - Trigger notification hook on COMPLETED (notification_service.send_milestone_alert)
 
 Access rules:
   - CUSTOMER: read-only (no create/update)
@@ -317,7 +317,7 @@ def update_milestone_status(
     On COMPLETED:
       - Sets completed_by = current_user.id
       - Sets completed_at = now
-      - Triggers notification hook (stubbed — notification_service.send_milestone_alert)
+      - Triggers notification hook (notification_service.send_milestone_alert)
 
     On status update:
       - Remarks are APPENDED (not replaced) if provided

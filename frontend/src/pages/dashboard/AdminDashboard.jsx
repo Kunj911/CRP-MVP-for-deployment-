@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Package, Upload, AlertTriangle, TrendingUp, CheckCircle, ArrowRight, Eye, FileWarning } from 'lucide-react'
+import { Package, Upload, AlertTriangle, TrendingUp, CheckCircle, ArrowRight, FileWarning } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import OrderCard from '../../components/order/OrderCard'
 import useAuthStore from '../../store/authStore'

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import DbSession, StaffUser, AdminUser
-from app.core.exceptions import ConflictException
+from app.core.exceptions import ConflictException, NotFoundException
 from app.models.customer import Customer
 from app.schemas.common import SuccessResponse
 from app.schemas.customer import CustomerResponse, CustomerOnboard, CustomerListResponse
@@ -80,3 +80,20 @@ def create_customer(
         data=CustomerResponse.model_validate(customer),
         message=f"Customer '{customer.company_name}' created successfully",
     )
+
+
+@router.get(
+    "/{customer_id}",
+    response_model=SuccessResponse[CustomerResponse],
+    summary="Get customer by ID",
+    description="Returns a single customer profile by ID. Accessible to staff users only.",
+)
+def get_customer(
+    customer_id: int,
+    current_user: StaffUser,
+    db: DbSession,
+) -> SuccessResponse[CustomerResponse]:
+    customer = db.query(Customer).filter(Customer.id == customer_id).first()
+    if not customer:
+        raise NotFoundException("Customer", customer_id)
+    return SuccessResponse(data=CustomerResponse.model_validate(customer))

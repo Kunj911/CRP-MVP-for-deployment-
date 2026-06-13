@@ -105,15 +105,6 @@ export const documentsApi = {
 }
 
 /**
- * QA REPORTS
- */
-export const qaApi = {
-  create: (orderId, data) => apiClient.post(`/orders/${orderId}/qa`, data),
-  listByOrder: (orderId) => apiClient.get(`/orders/${orderId}/qa`),
-  update: (qaId, data) => apiClient.patch(`/qa/${qaId}`, data),
-}
-
-/**
  * NOTIFICATIONS
  */
 export const notificationsApi = {

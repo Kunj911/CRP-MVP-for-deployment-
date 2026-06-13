@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FileText, Download, Check, X, Upload, AlertCircle, RefreshCw } from 'lucide-react'
+import { FileText, Download, Check, X, Upload, AlertCircle, RefreshCw, Trash2 } from 'lucide-react'
 import dayjs from 'dayjs'
 import useAuthStore from '../../store/authStore'
 import { uploadsApi, documentsApi } from '../../api'
@@ -27,6 +27,7 @@ export default function DocumentChecklist({ orderId, orderCode, onTimelineUpdate
   
   const canReview = user && ['QA', 'ADMIN', 'SUPER_ADMIN'].includes(user.role)
   const canUpload = user && ['DOCUMENTATION', 'ADMIN', 'SUPER_ADMIN'].includes(user.role)
+  const canDelete = user && ['SUPER_ADMIN', 'ADMIN'].includes(user.role)
 
   const [checklist, setChecklist] = useState([])
   const [documents, setDocuments] = useState([])
@@ -117,6 +118,18 @@ export default function DocumentChecklist({ orderId, orderCode, onTimelineUpdate
       alert(err.response?.data?.error?.message || 'Failed to reject document.')
     } finally {
       setSubmittingReject(false)
+    }
+  }
+
+  const handleDelete = async (docId, fileName) => {
+    if (!confirm(`Delete "${fileName || 'this document'}"? This action cannot be undone.`)) return
+    try {
+      await documentsApi.delete(docId)
+      await loadChecklistData()
+      if (onTimelineUpdate) onTimelineUpdate()
+    } catch (err) {
+      console.error('Delete failed:', err)
+      alert(err.response?.data?.error?.message || 'Failed to delete document.')
     }
   }
 
@@ -272,6 +285,17 @@ export default function DocumentChecklist({ orderId, orderCode, onTimelineUpdate
                             <X size={14} />
                           </button>
                         </>
+                      )}
+
+                      {/* Delete (Admin only) */}
+                      {matchedDoc && canDelete && (
+                        <button
+                          onClick={() => handleDelete(matchedDoc.id, matchedDoc.file_name)}
+                          className="p-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors"
+                          title="Delete document"
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       )}
 
                       {/* Upload / Replace (Docs/Admin only) */}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Upload, Package, Loader2, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Upload, Loader2, AlertCircle, Trash2, Edit3 } from 'lucide-react'
 import MilestoneTimeline from '../../components/milestone/MilestoneTimeline'
 import DocumentChecklist from '../../components/documents/DocumentChecklist'
 import UploadModal from '../../components/upload/UploadModal'
@@ -9,7 +9,7 @@ import Button from '../../components/ui/Button'
 import useAuthStore from '../../store/authStore'
 import { ordersApi, uploadsApi, documentsApi } from '../../api'
 
-const TABS = ['Timeline', 'Photos', 'Documents', 'QA Reports']
+const TABS = ['Timeline', 'Photos', 'Documents']
 
 const STATUS_PROGRESS = {
   CREATED: 5,
@@ -29,6 +29,9 @@ export default function OrderDetailPage() {
   const isStaff = useAuthStore((s) => s.isStaff())
   const [activeTab, setActiveTab] = useState('Timeline')
   const [uploadOpen, setUploadOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editForm, setEditForm] = useState({ product_name: '', quantity: '', unit: '', notes: '' })
+  const [saving, setSaving] = useState(false)
 
   const [order, setOrder] = useState(null)
   const [milestones, setMilestones] = useState([])
@@ -66,8 +69,9 @@ export default function OrderDetailPage() {
         id: rawOrder.id,
         order_code: rawOrder.order_code,
         status: status,
-        commodity_name: rawOrder.product_name || rawOrder.commodity_name,
-        quantity_kg: Number(rawOrder.quantity || 0),
+        product_name: rawOrder.product_name || rawOrder.commodity_name || '',
+        quantity: rawOrder.quantity || 0,
+        unit: rawOrder.unit || 'KG',
         destination_country: rawOrder.customer?.country,
         overall_progress: timeline?.overall_progress ?? STATUS_PROGRESS[status] ?? 0,
         customer_name: rawOrder.customer?.company_name,
@@ -105,6 +109,46 @@ export default function OrderDetailPage() {
     setLoading(true)
     loadData()
   }, [orderId])
+
+  const handleDeleteMedia = async (photoId) => {
+    if (!confirm('Delete this photo? This action cannot be undone.')) return
+    try {
+      await uploadsApi.deleteMedia(photoId)
+      setPhotos((prev) => prev.filter((p) => p.id !== photoId))
+    } catch (err) {
+      console.error('Delete photo failed:', err)
+      alert(err.response?.data?.error?.message || 'Failed to delete photo.')
+    }
+  }
+
+  const handleOpenEdit = () => {
+    setEditForm({
+      product_name: order.product_name || '',
+      quantity: order.quantity || '',
+      unit: order.unit || 'KG',
+      notes: order.notes || '',
+    })
+    setEditOpen(true)
+  }
+
+  const handleEditSave = async () => {
+    setSaving(true)
+    try {
+      await ordersApi.update(orderId, {
+        product_name: editForm.product_name,
+        quantity: Number(editForm.quantity),
+        unit: editForm.unit,
+        notes: editForm.notes,
+      })
+      setEditOpen(false)
+      await loadData()
+    } catch (err) {
+      console.error('Update failed:', err)
+      alert(err.response?.data?.error?.message || 'Failed to update order.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const handleDownload = async (doc) => {
     try {
@@ -160,15 +204,20 @@ export default function OrderDetailPage() {
               <Badge status={order.status} size="md" />
             </div>
             <p className="text-sm text-gray-500 font-body">
-              {order.commodity_name} · {order.quantity_kg?.toLocaleString()} kg
+              {order.product_name} · {Number(order.quantity).toLocaleString()} {order.unit}
               {order.destination_country ? ` → ${order.destination_country}` : ''}
             </p>
           </div>
         </div>
         {isStaff && (
-          <Button icon={Upload} size="sm" onClick={() => setUploadOpen(true)}>
-            Upload
-          </Button>
+          <div className="flex gap-2">
+            <Button icon={Edit3} size="sm" variant="outline" onClick={handleOpenEdit}>
+              Edit
+            </Button>
+            <Button icon={Upload} size="sm" onClick={() => setUploadOpen(true)}>
+              Upload
+            </Button>
+          </div>
         )}
       </div>
 
@@ -224,6 +273,15 @@ export default function OrderDetailPage() {
                       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5">
                         <p className="text-[11px] text-white font-body">{photo.label}</p>
                       </div>
+                      {isStaff && (
+                        <button
+                          onClick={() => handleDeleteMedia(photo.id)}
+                          className="absolute top-1.5 right-1.5 w-7 h-7 rounded-lg bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600/80"
+                          title="Delete photo"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -251,12 +309,7 @@ export default function OrderDetailPage() {
             />
           )}
 
-          {activeTab === 'QA Reports' && (
-            <div className="py-8 text-center">
-              <Package size={36} className="text-beige-300 mx-auto mb-3" />
-              <p className="text-sm text-gray-400 font-body">No QA reports yet for this order.</p>
-            </div>
-          )}
+
         </div>
       </div>
 
@@ -268,6 +321,67 @@ export default function OrderDetailPage() {
         orderCode={order.order_code}
         onSuccess={loadData}
       />
+
+      {/* Edit Order Modal */}
+      {editOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setEditOpen(false)} />
+          <div className="relative bg-white rounded-xl p-5 w-full max-w-md mx-4 shadow-xl space-y-4">
+            <h3 className="font-heading font-semibold text-gray-900 text-base">Edit Order</h3>
+            <p className="text-xs text-gray-400 font-body -mt-2">{order.order_code}</p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Product Name</label>
+                <input
+                  type="text"
+                  value={editForm.product_name}
+                  onChange={(e) => setEditForm({ ...editForm, product_name: e.target.value })}
+                  className="w-full px-3 py-2 border border-beige-300 rounded-lg text-sm focus:outline-none focus:border-saffron-400"
+                />
+              </div>
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Quantity</label>
+                  <input
+                    type="number"
+                    value={editForm.quantity}
+                    onChange={(e) => setEditForm({ ...editForm, quantity: e.target.value })}
+                    className="w-full px-3 py-2 border border-beige-300 rounded-lg text-sm focus:outline-none focus:border-saffron-400"
+                  />
+                </div>
+                <div className="w-24">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Unit</label>
+                  <input
+                    type="text"
+                    value={editForm.unit}
+                    onChange={(e) => setEditForm({ ...editForm, unit: e.target.value })}
+                    className="w-full px-3 py-2 border border-beige-300 rounded-lg text-sm focus:outline-none focus:border-saffron-400"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+                <textarea
+                  rows={3}
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                  className="w-full px-3 py-2 border border-beige-300 rounded-lg text-sm focus:outline-none focus:border-saffron-400 font-body resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2.5 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => setEditOpen(false)} disabled={saving}>
+                Cancel
+              </Button>
+              <Button className="flex-1" loading={saving} onClick={handleEditSave}>
+                Save
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
