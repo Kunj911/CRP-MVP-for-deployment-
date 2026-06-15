@@ -232,6 +232,28 @@ class Settings(BaseSettings):
                 if origin == "*":
                     raise ValueError(f"SECURITY BLOCK: CORS wildcard '*' is not allowed in {self.APP_ENV}.")
 
+            _DEFAULTS_TO_BLOCK = {
+                "METRICS_PASSWORD": ("metrics-secure-password-123!", self.METRICS_PASSWORD),
+                "SEED_DEFAULT_PASSWORD": ("Temp@123", self.SEED_DEFAULT_PASSWORD),
+            }
+            for field_name, (bad_value, actual_value) in _DEFAULTS_TO_BLOCK.items():
+                if actual_value == bad_value:
+                    raise ValueError(
+                        f"SECURITY BLOCK: {field_name} is set to the insecure default '{bad_value}' "
+                        f"in '{self.APP_ENV}' environment. Set a strong unique value via environment variable."
+                    )
+
+            _DEFAULTS_TO_WARN = {
+                "DB_PASSWORD": ("2104", self.DB_PASSWORD),
+            }
+            for field_name, (bad_value, actual_value) in _DEFAULTS_TO_WARN.items():
+                if actual_value == bad_value:
+                    _config_logger.warning(
+                        "WARNING: %s is set to the default value '%s' in '%s' environment. "
+                        "This is strongly discouraged for production.",
+                        field_name, bad_value, self.APP_ENV,
+                    )
+
         # Bind new SMTP variables to legacy counterparts for backward compatibility
         if self.SMTP_USERNAME and not self.SMTP_USER:
             object.__setattr__(self, "SMTP_USER", self.SMTP_USERNAME)

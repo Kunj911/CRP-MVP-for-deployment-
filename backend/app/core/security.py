@@ -174,7 +174,10 @@ def decrypt_mfa_secret(encrypted_secret: str) -> str:
         f = Fernet(settings.MFA_ENCRYPTION_KEY.encode())
         return f.decrypt(encrypted_secret.encode()).decode()
     except Exception as e:
-        # Fallback to plaintext if it is not encrypted (backward compatibility)
         import logging
-        logging.getLogger(__name__).warning("Failed to decrypt TOTP secret, falling back to plaintext: %s", e)
-        return encrypted_secret
+        logger = logging.getLogger(__name__)
+        if settings.is_development:
+            logger.warning("Failed to decrypt TOTP secret, falling back to plaintext: %s", e)
+            return encrypted_secret
+        logger.error("Failed to decrypt TOTP secret for user: %s", e)
+        raise

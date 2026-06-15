@@ -8,7 +8,7 @@ const PHOTO_CATEGORIES = [
   { value: 'PROCUREMENT_IMAGE', label: '🌾 Procurement',  color: 'bg-amber-50 border-amber-200' },
   { value: 'PACKAGING_IMAGE',   label: '📦 Packaging',    color: 'bg-purple-50 border-purple-200' },
   { value: 'QA_IMAGE',          label: '🧪 QA Testing',   color: 'bg-blue-50 border-blue-200' },
-  { value: 'LOADING_IMAGE',     label: '🚢 Loading',      color: 'bg-saffron-50 border-saffron-200' },
+  { value: 'LOADING_IMAGE',     label: '🚢 Loading',      color: 'bg-forest-50 border-forest-200' },
 ]
 
 const DOC_TYPES = [
@@ -100,12 +100,12 @@ export default function UploadModal({ isOpen, onClose, orderId, orderCode, onSuc
       {/* Sheet */}
       <div className="relative bg-white w-full md:w-[480px] md:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-y-auto shadow-xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-beige-200">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-agri-200">
           <div>
-            <h2 className="font-heading font-semibold text-gray-900 text-base">Upload Files</h2>
-            <p className="text-[11px] text-gray-400 font-body">{orderCode}</p>
+            <h2 className="font-heading font-semibold text-slate-900 text-base">Upload Files</h2>
+            <p className="text-[11px] text-slate-400 font-body">{orderCode}</p>
           </div>
-          <button onClick={handleClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-beige-100 text-gray-500">
+          <button onClick={handleClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-agri-100 text-slate-500">
             <X size={18} />
           </button>
         </div>
@@ -113,11 +113,11 @@ export default function UploadModal({ isOpen, onClose, orderId, orderCode, onSuc
         {/* Done state */}
         {done ? (
           <div className="flex flex-col items-center py-12 px-5 gap-3">
-            <div className="w-16 h-16 rounded-full bg-cardamom-50 flex items-center justify-center">
-              <CheckCircle2 size={36} className="text-cardamom-500" />
-            </div>
-            <p className="font-heading font-semibold text-gray-900">Upload Successful!</p>
-            <p className="text-sm text-gray-400 text-center font-body">File has been saved to order {orderCode}.</p>
+        <div className="w-16 h-16 rounded-full bg-forest-50 flex items-center justify-center">
+          <CheckCircle2 size={36} className="text-forest-700" />
+        </div>
+        <p className="font-heading font-semibold text-slate-900">Upload Successful!</p>
+        <p className="text-sm text-slate-400 text-center font-body">File has been saved to order {orderCode}.</p>
             <div className="flex gap-3 mt-2 w-full">
               <Button variant="outline" className="flex-1" onClick={handleClose}>Done</Button>
               <Button className="flex-1" onClick={() => { setFile(null); setPreview(null); setDone(false) }}>
@@ -127,14 +127,13 @@ export default function UploadModal({ isOpen, onClose, orderId, orderCode, onSuc
           </div>
         ) : (
           <div className="px-5 py-4 space-y-5">
-            {/* Tab switcher */}
-            <div className="flex bg-beige-100 rounded-lg p-1 gap-1">
+            <div className="flex bg-agri-100 rounded-lg p-1 gap-1">
               {TABS.map(({ key, label }) => (
                 <button
                   key={key}
                   onClick={() => { setTab(key); setFile(null); setPreview(null); setCategory(null); setDocType(null) }}
                   className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
-                    tab === key ? 'bg-white shadow-sm text-saffron-700' : 'text-gray-500 hover:text-gray-700'
+                    tab === key ? 'bg-white shadow-sm text-forest-800' : 'text-slate-500 hover:text-slate-700'
                   }`}
                 >
                   {label}
@@ -156,8 +155,8 @@ export default function UploadModal({ isOpen, onClose, orderId, orderCode, onSuc
                       onClick={() => tab === 'photo' ? setCategory(item.value) : setDocType(item.value)}
                       className={`p-3 text-left rounded-xl border-2 text-sm font-medium transition-all ${
                         selected
-                          ? 'border-saffron-500 bg-saffron-50 text-saffron-800'
-                          : `border-beige-200 bg-white text-gray-600 hover:border-beige-300 ${item.color ?? ''}`
+                          ? 'border-forest-700 bg-forest-50 text-forest-800'
+                          : `border-agri-200 bg-white text-slate-600 hover:border-agri-300 ${item.color ?? ''}`
                       }`}
                     >
                       {item.label}
@@ -169,7 +168,7 @@ export default function UploadModal({ isOpen, onClose, orderId, orderCode, onSuc
 
             {/* Step 2: File drop zone */}
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">File</p>
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">File</p>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -178,7 +177,7 @@ export default function UploadModal({ isOpen, onClose, orderId, orderCode, onSuc
                 onChange={handleFile}
               />
               {preview ? (
-                <div className="relative rounded-xl overflow-hidden border border-beige-200 h-48">
+                <div className="relative rounded-xl overflow-hidden border border-agri-200 h-48">
                   <img src={preview} alt="preview" className="w-full h-full object-cover" />
                   <button
                     onClick={() => { setFile(null); setPreview(null) }}
@@ -188,21 +187,21 @@ export default function UploadModal({ isOpen, onClose, orderId, orderCode, onSuc
                   </button>
                 </div>
               ) : file ? (
-                <div className="flex items-center gap-3 p-3 rounded-xl border border-beige-200 bg-beige-50">
-                  <FileText size={20} className="text-gray-400 shrink-0" />
-                  <p className="text-sm text-gray-700 truncate">{file.name}</p>
-                  <button onClick={() => setFile(null)} className="ml-auto text-gray-400 hover:text-red-500">
+                <div className="flex items-center gap-3 p-3 rounded-xl border border-agri-200 bg-agri-50">
+                  <FileText size={20} className="text-slate-400 shrink-0" />
+                  <p className="text-sm text-slate-700 truncate">{file.name}</p>
+                  <button onClick={() => setFile(null)} className="ml-auto text-slate-400 hover:text-red-500">
                     <X size={14} />
                   </button>
                 </div>
               ) : (
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-beige-300 rounded-xl p-8 flex flex-col items-center gap-2 hover:border-saffron-400 hover:bg-saffron-50/30 transition-colors"
+                  className="w-full border-2 border-dashed border-agri-300 rounded-xl p-8 flex flex-col items-center gap-2 hover:border-forest-500 hover:bg-forest-50/30 transition-colors"
                 >
-                  <Upload size={24} className="text-saffron-400" />
-                  <span className="text-sm text-gray-500 font-body">Tap to select file</span>
-                  <span className="text-[11px] text-gray-400">
+                  <Upload size={24} className="text-forest-500" />
+                  <span className="text-sm text-slate-500 font-body">Tap to select file</span>
+                  <span className="text-[11px] text-slate-400">
                     {tab === 'photo' ? 'JPEG, PNG, WebP, HEIC · max 10MB' : 'PDF, XLSX, DOCX · max 25MB'}
                   </span>
                 </button>

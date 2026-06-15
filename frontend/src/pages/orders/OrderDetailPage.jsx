@@ -170,8 +170,8 @@ export default function OrderDetailPage() {
   if (loading) {
     return (
       <div className="py-32 text-center flex flex-col items-center justify-center gap-2">
-        <Loader2 className="w-8 h-8 animate-spin text-saffron-500" />
-        <p className="text-sm text-gray-400 font-body">Loading shipment details...</p>
+        <Loader2 className="w-8 h-8 animate-spin text-forest-700" />
+        <p className="text-sm text-slate-400 font-body">Loading shipment details...</p>
       </div>
     )
   }
@@ -180,8 +180,8 @@ export default function OrderDetailPage() {
     return (
       <div className="max-w-md mx-auto py-16 text-center space-y-4">
         <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
-        <h2 className="font-heading font-semibold text-lg text-gray-900">Access Denied or Not Found</h2>
-        <p className="text-sm text-gray-500 font-body">{error || 'This order does not exist.'}</p>
+        <h2 className="font-heading font-semibold text-lg text-slate-900">Access Denied or Not Found</h2>
+        <p className="text-sm text-slate-500 font-body">{error || 'This order does not exist.'}</p>
         <Button onClick={() => navigate('/orders')}>Back to Orders</Button>
       </div>
     )
@@ -194,16 +194,16 @@ export default function OrderDetailPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/orders')}
-            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-beige-200 text-gray-500 transition-colors shrink-0"
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-agri-100 text-slate-500 transition-colors shrink-0"
           >
             <ArrowLeft size={18} />
           </button>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="font-heading font-bold text-xl text-gray-900">{order.order_code}</h1>
+              <h1 className="font-heading font-bold text-xl text-slate-900">{order.order_code}</h1>
               <Badge status={order.status} size="md" />
             </div>
-            <p className="text-sm text-gray-500 font-body">
+            <p className="text-sm text-slate-500 font-body">
               {order.product_name} · {Number(order.quantity).toLocaleString()} {order.unit}
               {order.destination_country ? ` → ${order.destination_country}` : ''}
             </p>
@@ -222,34 +222,33 @@ export default function OrderDetailPage() {
       </div>
 
       {/* Progress strip */}
-      <div className="bg-white rounded-xl border border-beige-200 px-4 py-3 flex items-center gap-4 shadow-card">
+      <div className="bg-white rounded-xl border border-agri-200 px-4 py-3 flex items-center gap-4 shadow-card">
         <div className="flex-1">
           <div className="flex justify-between mb-1">
-            <span className="text-[11px] text-gray-500 font-body">Overall Progress</span>
-            <span className="text-[11px] font-semibold text-saffron-600">{order.overall_progress}%</span>
+            <span className="text-[11px] text-slate-500 font-body">Overall Progress</span>
+            <span className="text-[11px] font-semibold text-forest-700">{order.overall_progress}%</span>
           </div>
-          <div className="w-full bg-beige-100 rounded-full h-2">
-            <div className="h-full bg-saffron-500 rounded-full" style={{ width: `${order.overall_progress}%` }} />
+          <div className="w-full bg-agri-100 rounded-full h-2">
+            <div className="h-full bg-forest-700 rounded-full" style={{ width: `${order.overall_progress}%` }} />
           </div>
         </div>
         <div className="text-right shrink-0">
-          <p className="text-[11px] text-gray-400 font-body">Customer</p>
-          <p className="text-sm font-medium text-gray-800 font-heading">{order.customer_name}</p>
+          <p className="text-[11px] text-slate-400 font-body">Customer</p>
+          <p className="text-sm font-medium text-slate-800 font-heading">{order.customer_name}</p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-xl border border-beige-200 shadow-card overflow-hidden">
-        {/* Tab bar */}
-        <div className="flex border-b border-beige-100 overflow-x-auto">
+      <div className="bg-white rounded-xl border border-agri-200 shadow-card overflow-hidden">
+        <div className="flex border-b border-agri-100 overflow-x-auto">
           {TABS.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${
                 activeTab === tab
-                  ? 'border-saffron-500 text-saffron-700'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'border-forest-700 text-forest-800'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
               }`}
             >
               {tab}
@@ -268,7 +267,7 @@ export default function OrderDetailPage() {
               {photos.length ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                   {photos.map((photo) => (
-                    <div key={photo.id} className="relative group rounded-xl overflow-hidden aspect-square bg-beige-100">
+                    <div key={photo.id} className="relative group rounded-xl overflow-hidden aspect-square bg-agri-100">
                       <img src={photo.url} alt={photo.label} className="w-full h-full object-cover" />
                       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5">
                         <p className="text-[11px] text-white font-body">{photo.label}</p>
@@ -286,14 +285,14 @@ export default function OrderDetailPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-gray-400 py-6 text-center font-body">
+                <p className="text-sm text-slate-400 py-6 text-center font-body">
                   No photos uploaded yet for this order.
                 </p>
               )}
               {isStaff && (
                 <button
                   onClick={() => setUploadOpen(true)}
-                  className="mt-3 w-full border-2 border-dashed border-beige-300 rounded-xl py-4 text-sm text-gray-500 hover:border-saffron-400 hover:text-saffron-600 transition-colors flex items-center justify-center gap-2"
+                  className="mt-3 w-full border-2 border-dashed border-agri-300 rounded-xl py-4 text-sm text-slate-500 hover:border-forest-500 hover:text-forest-700 transition-colors flex items-center justify-center gap-2"
                 >
                   <Upload size={16} /> Add Photos
                 </button>
@@ -327,46 +326,46 @@ export default function OrderDetailPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={() => setEditOpen(false)} />
           <div className="relative bg-white rounded-xl p-5 w-full max-w-md mx-4 shadow-xl space-y-4">
-            <h3 className="font-heading font-semibold text-gray-900 text-base">Edit Order</h3>
-            <p className="text-xs text-gray-400 font-body -mt-2">{order.order_code}</p>
+            <h3 className="font-heading font-semibold text-slate-900 text-base">Edit Order</h3>
+            <p className="text-xs text-slate-400 font-body -mt-2">{order.order_code}</p>
 
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Product Name</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Product Name</label>
                 <input
                   type="text"
                   value={editForm.product_name}
                   onChange={(e) => setEditForm({ ...editForm, product_name: e.target.value })}
-                  className="w-full px-3 py-2 border border-beige-300 rounded-lg text-sm focus:outline-none focus:border-saffron-400"
+                  className="w-full px-3 py-2 border border-agri-300 rounded-lg text-sm focus:outline-none focus:border-forest-500"
                 />
               </div>
               <div className="flex gap-3">
                 <div className="flex-1">
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Quantity</label>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Quantity</label>
                   <input
                     type="number"
                     value={editForm.quantity}
                     onChange={(e) => setEditForm({ ...editForm, quantity: e.target.value })}
-                    className="w-full px-3 py-2 border border-beige-300 rounded-lg text-sm focus:outline-none focus:border-saffron-400"
+                    className="w-full px-3 py-2 border border-agri-300 rounded-lg text-sm focus:outline-none focus:border-forest-500"
                   />
                 </div>
                 <div className="w-24">
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Unit</label>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Unit</label>
                   <input
                     type="text"
                     value={editForm.unit}
                     onChange={(e) => setEditForm({ ...editForm, unit: e.target.value })}
-                    className="w-full px-3 py-2 border border-beige-300 rounded-lg text-sm focus:outline-none focus:border-saffron-400"
+                    className="w-full px-3 py-2 border border-agri-300 rounded-lg text-sm focus:outline-none focus:border-forest-500"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Notes</label>
                 <textarea
                   rows={3}
                   value={editForm.notes}
                   onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                  className="w-full px-3 py-2 border border-beige-300 rounded-lg text-sm focus:outline-none focus:border-saffron-400 font-body resize-none"
+                  className="w-full px-3 py-2 border border-agri-300 rounded-lg text-sm focus:outline-none focus:border-forest-500 font-body resize-none"
                 />
               </div>
             </div>

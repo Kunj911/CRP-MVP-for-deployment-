@@ -31,7 +31,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         start = time.perf_counter()
 
         logger.info(
-            "→ [%s] %s %s",
+            ">> [%s] %s %s",
             request_id,
             request.method,
             request.url.path,
@@ -50,7 +50,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
         log_fn = logger.warning if response.status_code >= 400 else logger.info
         log_fn(
-            "← [%s] %s %s — %d (%sms)",
+            "<< [%s] %s %s - %d (%sms)",
             request_id,
             request.method,
             request.url.path,

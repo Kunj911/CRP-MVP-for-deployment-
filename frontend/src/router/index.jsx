@@ -45,8 +45,8 @@ export default function AppRouter() {
     <BrowserRouter>
       <Suspense
         fallback={
-          <div className="min-h-screen bg-beige-100 flex items-center justify-center">
-            <div className="w-10 h-10 border-3 border-saffron-500 border-t-transparent rounded-full animate-spin" />
+          <div className="min-h-screen bg-agri-50 flex items-center justify-center">
+            <div className="w-10 h-10 border-3 border-forest-700 border-t-transparent rounded-full animate-spin" />
           </div>
         }
       >

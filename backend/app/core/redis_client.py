@@ -2,7 +2,7 @@
 app/core/redis_client.py
 
 Redis connection pool for caching and JWT blacklisting.
-Includes timeout configurations, retry strategy, and graceful failure handling.
+Includes timeout configurations and graceful failure handling.
 
 Railway: REDIS_URL is injected automatically.
 Falls back to redis://localhost:6379/0 for local development.
@@ -10,8 +10,6 @@ Falls back to redis://localhost:6379/0 for local development.
 
 import redis
 import logging
-from redis.retry import Retry
-from redis.backoff import ExponentialBackoff
 from app.core.config import get_settings
 
 logger = logging.getLogger("livetrace.redis")
@@ -52,23 +50,19 @@ class SafeRedis:
 
 class LazyRedis:
     """
-    Reconnect lazily instead of permanently degrading when Redis is not ready at import time.
+    Lazily connects to Redis. On first failure, permanently degrades
+    so no subsequent request pays the connection timeout penalty.
     """
     def __init__(self):
         self._client = None
+        self._degraded = False
 
     def _connect(self):
-        retry_strategy = Retry(
-            backoff=ExponentialBackoff(cap=10, base=2),
-            retries=3,
-        )
         raw_client = redis.from_url(
             settings.REDIS_URL,
             decode_responses=True,
-            socket_timeout=5,
-            socket_connect_timeout=5,
-            retry=retry_strategy,
-            retry_on_timeout=True,
+            socket_timeout=2,
+            socket_connect_timeout=2,
         )
         raw_client.ping()
         logger.info(
@@ -78,8 +72,28 @@ class LazyRedis:
         self._client = SafeRedis(raw_client)
         return self._client
 
+    def close(self) -> None:
+        """Close the underlying Redis connection pool."""
+        if self._client is not None:
+            try:
+                self._client.close()
+            except Exception:
+                pass
+        self._client = None
+        self._degraded = True
+
     def __getattr__(self, name):
         def wrapper(*args, **kwargs):
+            if self._degraded:
+                if name == "pipeline":
+                    return SafeRedisPipeline()
+                if name == "ping":
+                    return False
+                if name == "get":
+                    return None
+                if name == "execute":
+                    return []
+                return None
             try:
                 client = self._client or self._connect()
                 return getattr(client, name)(*args, **kwargs)
@@ -89,6 +103,7 @@ class LazyRedis:
                     name,
                     exc,
                 )
+                self._degraded = True
                 self._client = None
                 if name == "pipeline":
                     return SafeRedisPipeline()

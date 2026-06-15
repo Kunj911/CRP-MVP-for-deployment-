@@ -14,7 +14,7 @@ export default function MobileNav() {
   const isCustomer = useAuthStore((s) => s.isCustomer())
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-beige-200 flex h-14">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-agri-200 flex h-14">
       {TABS
         .filter((t) => !(t.staffOnly && isCustomer))
         .map(({ to, icon: Icon, label, end }) => (
@@ -24,7 +24,7 @@ export default function MobileNav() {
             end={end}
             className={({ isActive }) =>
               `flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors ${
-                isActive ? 'text-saffron-600' : 'text-gray-400'
+                isActive ? 'text-forest-700' : 'text-slate-400'
               }`
             }
           >

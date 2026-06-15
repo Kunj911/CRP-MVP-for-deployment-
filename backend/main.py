@@ -134,7 +134,7 @@ def create_app() -> FastAPI:
                 environment=settings.APP_ENV,
                 traces_sample_rate=1.0 if settings.is_development else 0.1,
             )
-            logger.info("✓ Sentry SDK initialized")
+            logger.info("[OK] Sentry SDK initialized")
         except ImportError:
             logger.warning("sentry-sdk package not installed — Sentry integration skipped")
 
@@ -147,7 +147,7 @@ def create_app() -> FastAPI:
                 tags=["Observability"],
                 dependencies=[Depends(get_metrics_user)],
             )
-            logger.info("✓ Prometheus metrics endpoint enabled at /metrics")
+            logger.info("[OK] Prometheus metrics endpoint enabled at /metrics")
         except ImportError:
             logger.warning("prometheus-fastapi-instrumentator not installed — metrics skipped")
 

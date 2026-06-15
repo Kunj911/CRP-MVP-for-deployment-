@@ -32,7 +32,6 @@ settings = get_settings()
 _CSRF_EXEMPT_PATHS = {
     "/api/v1/auth/login",
     "/api/v1/auth/mfa/login-verify",
-    "/api/v1/auth/refresh",
     "/health",
     "/docs",
     "/redoc",

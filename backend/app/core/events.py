@@ -51,7 +51,10 @@ def _check_redis_connection() -> bool:
 def _redact_url(url: str) -> str:
     """Redact password from a database/redis URL for safe logging."""
     import re
-    return re.sub(r'://([^:]+):([^@]+)@', r'://\1:***@', url)
+    redacted = re.sub(r'://([^:]+):([^@]+)@', r'://\1:***@', url)
+    if redacted == url:
+        redacted = re.sub(r'://:([^@]+)@', r'://:***@', url)
+    return redacted
 
 
 def _verify_and_initialize_schema(db_engine) -> None:
@@ -76,9 +79,9 @@ def _verify_and_initialize_schema(db_engine) -> None:
         if missing_tables:
             logger.info("Database schema is missing tables %s. Initializing schema...", missing_tables)
             Base.metadata.create_all(bind=db_engine)
-            logger.info("✓ Database schema initialized successfully.")
+            logger.info("[OK] Database schema initialized successfully.")
         else:
-            logger.info("✓ Database schema already initialized ('users' table present). Skipping initialization.")
+            logger.info("[OK] Database schema already initialized ('users' table present). Skipping initialization.")
     except Exception as exc:
         logger.error("Failed to verify/initialize database schema: %s", exc)
         if settings.is_deployed:
@@ -100,16 +103,16 @@ async def lifespan(app: FastAPI):
       - production: FAIL on database unavailable, configurable Redis
     """
     # ── STARTUP ───────────────────────────────────────────────────────────────
-    logger.info("━━━ Starting %s [%s] ━━━", settings.APP_NAME, settings.APP_ENV)
+    logger.info("=== Starting %s [%s] ===", settings.APP_NAME, settings.APP_ENV)
     logger.info("Database URL: %s", _redact_url(settings.DATABASE_URL))
 
     # Verify DB connectivity on boot
     if check_db_connection():
-        logger.info("✓ Database connection established")
+        logger.info("[OK] Database connection established")
         _verify_and_initialize_schema(engine)
     else:
         logger.critical(
-            "✗ Cannot connect to database — URL: %s",
+            "[FAIL] Cannot connect to database - URL: %s",
             _redact_url(settings.DATABASE_URL),
         )
         # In staging and production, raise to prevent the server from starting broken
@@ -120,16 +123,16 @@ async def lifespan(app: FastAPI):
             )
         else:
             logger.warning(
-                "⚠ Database unavailable — continuing in development mode. "
+                "[WARN] Database unavailable - continuing in development mode. "
                 "API routes requiring database will fail."
             )
 
     # Verify Redis connectivity on boot
     if _check_redis_connection():
-        logger.info("✓ Redis connection established")
+        logger.info("[OK] Redis connection established")
     else:
         logger.warning(
-            "✗ Cannot connect to Redis at %s",
+            "[FAIL] Cannot connect to Redis at %s",
             _redact_url(settings.REDIS_URL),
         )
         # Redis failure behavior depends on REDIS_REQUIRED setting
@@ -141,24 +144,30 @@ async def lifespan(app: FastAPI):
             )
         elif settings.is_deployed:
             logger.warning(
-                "⚠ Redis is unavailable in '%s' environment — brute-force protection "
+                "[WARN] Redis is unavailable in '%s' environment - brute-force protection "
                 "and token revocation will degrade. Set REDIS_REQUIRED=True to enforce.",
                 settings.APP_ENV,
             )
         else:
             logger.warning(
-                "⚠ Redis is unavailable — brute-force protection and token revocation "
+                "[WARN] Redis is unavailable - brute-force protection and token revocation "
                 "will not work. This is acceptable in development only."
             )
 
     # Log active storage backend
-    logger.info("✓ Storage backend: %s", settings.STORAGE_BACKEND)
+    logger.info("[OK] Storage backend: %s", settings.STORAGE_BACKEND)
 
-    logger.info("✓ %s is ready to serve requests", settings.APP_NAME)
+    logger.info("[OK] %s is ready to serve requests", settings.APP_NAME)
 
     yield  # App runs here
 
     # ── SHUTDOWN ──────────────────────────────────────────────────────────────
     logger.info("Shutting down %s...", settings.APP_NAME)
     engine.dispose()
-    logger.info("✓ Database connections closed")
+    logger.info("[OK] Database connections closed")
+    try:
+        from app.core.redis_client import redis_client
+        redis_client.close()
+        logger.info("[OK] Redis connections closed")
+    except Exception:
+        pass

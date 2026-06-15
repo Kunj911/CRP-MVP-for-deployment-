@@ -22,10 +22,10 @@ export default function App() {
   // Show loading screen while session bootstrap is in progress
   if (isSessionLoading) {
     return (
-      <div className="min-h-screen bg-beige-100 flex items-center justify-center">
+      <div className="min-h-screen bg-agri-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-3 border-saffron-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-gray-500 font-body">Restoring session...</p>
+          <div className="w-10 h-10 border-3 border-forest-700 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-slate-500 font-body">Restoring session...</p>
         </div>
       </div>
     )
@@ -40,6 +40,14 @@ export default function App() {
           style: {
             fontFamily: 'Inter, sans-serif',
             borderRadius: '10px',
+            border: '1px solid #DCE8D8',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+          },
+          success: {
+            iconTheme: { primary: '#2E7D32', secondary: '#E8F5E9' },
+          },
+          error: {
+            iconTheme: { primary: '#DC2626', secondary: '#FEE2E2' },
           },
         }}
       />

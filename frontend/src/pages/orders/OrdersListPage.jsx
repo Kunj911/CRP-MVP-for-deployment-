@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
-import { Search, Filter, Plus, Loader2, AlertCircle } from 'lucide-react'
+import { Search, Filter, Plus, Loader2, AlertCircle, Sprout } from 'lucide-react'
 import OrderCard from '../../components/order/OrderCard'
 import Button from '../../components/ui/Button'
 import useAuthStore from '../../store/authStore'
@@ -95,8 +95,8 @@ export default function OrdersListPage() {
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading font-bold text-xl text-gray-900">Orders</h1>
-          <p className="text-sm text-gray-500 font-body">
+          <h1 className="font-heading font-bold text-xl text-slate-900">Orders</h1>
+          <p className="text-sm text-slate-500 font-body">
             {loading ? 'Loading shipments...' : `${orders.length} total shipments`}
           </p>
         </div>
@@ -109,18 +109,18 @@ export default function OrdersListPage() {
 
       {/* Search + filter bar */}
       <div className="flex flex-col sm:flex-row gap-2">
-        <div className="flex items-center gap-2 bg-white border border-beige-200 rounded-lg px-3 py-2 flex-1 shadow-card">
-          <Search size={15} className="text-gray-400 shrink-0" />
+        <div className="flex items-center gap-2 bg-white border border-agri-200 rounded-lg px-3 py-2 flex-1 shadow-card">
+          <Search size={15} className="text-slate-400 shrink-0" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by order code, customer, commodity…"
-            className="flex-1 text-sm text-gray-700 placeholder-gray-400 outline-none bg-transparent font-body"
+            className="flex-1 text-sm text-slate-700 placeholder-slate-400 outline-none bg-transparent font-body"
             disabled={loading}
           />
         </div>
 
-        <div className="flex gap-1 bg-white border border-beige-200 rounded-lg p-1 shadow-card">
+        <div className="flex gap-1 bg-white border border-agri-200 rounded-lg p-1 shadow-card">
           {STATUS_FILTERS.map((f) => (
             <button
               key={f}
@@ -128,8 +128,8 @@ export default function OrdersListPage() {
               disabled={loading}
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 statusFilter === f
-                  ? 'bg-saffron-500 text-white'
-                  : 'text-gray-500 hover:bg-beige-100'
+                  ? 'bg-forest-700 text-white'
+                  : 'text-slate-500 hover:bg-agri-100'
               }`}
             >
               {f === 'SHIPPED' ? 'Dispatched' : f}
@@ -141,8 +141,8 @@ export default function OrdersListPage() {
       {/* Main Content Area */}
       {loading ? (
         <div className="py-24 text-center flex flex-col items-center justify-center gap-2">
-          <Loader2 className="w-8 h-8 animate-spin text-saffron-500" />
-          <p className="text-sm text-gray-400 font-body">Fetching shipments...</p>
+          <Loader2 className="w-8 h-8 animate-spin text-forest-700" />
+          <p className="text-sm text-slate-400 font-body">Fetching shipments...</p>
         </div>
       ) : error ? (
         <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center max-w-md mx-auto space-y-3">
@@ -157,8 +157,8 @@ export default function OrdersListPage() {
         </div>
       ) : (
         <div className="py-16 text-center">
-          <Filter size={36} className="text-beige-300 mx-auto mb-3" />
-          <p className="text-sm text-gray-400 font-body">No orders match your filters.</p>
+          <Filter size={36} className="text-agri-300 mx-auto mb-3" />
+          <p className="text-sm text-slate-400 font-body">No orders match your filters.</p>
         </div>
       )}
     </div>

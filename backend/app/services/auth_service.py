@@ -162,7 +162,7 @@ def login(
     if not user:
         # Run a dummy password check to mimic bcrypt hashing time (Task 10)
         verify_password(data.password, "$2b$12$yQ3zX8C6B4V2N1M5K7J9O3iP1g2m3s4v5b6n7h8j9k0l1a2s3d4f")
-        logger.warning("Login failed — email not found: %s from ip=%s", data.email, ip_address)
+        logger.warning("Login failed - email not found: %s from ip=%s", data.email, ip_address)
         # DATA-002: Log failed login attempts to audit table for security monitoring
         db.add(AuditLog(
             user_id=None,
@@ -177,7 +177,7 @@ def login(
 
     # 2. Verify password FIRST (Task 10)
     if not verify_password(data.password, user.password_hash):
-        logger.warning("Login failed — wrong password: user_id=%s from ip=%s", user.id, ip_address)
+        logger.warning("Login failed - wrong password: user_id=%s from ip=%s", user.id, ip_address)
         db.add(AuditLog(
             user_id=user.id,
             action_type="LOGIN_FAILED",
@@ -322,8 +322,12 @@ def refresh_access_token(
         db.commit()
         raise UnauthorizedException("Refresh token has been revoked or is invalid")
 
-    if session.expires_at and session.expires_at < datetime.now(UTC):
-        raise TokenExpiredException()
+    if session.expires_at:
+        expires_at = session.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=UTC)
+        if expires_at < datetime.now(UTC):
+            raise TokenExpiredException()
 
     # 3. Look up the user (may have been deactivated since token was issued)
     user = db.query(User).filter(User.id == user_id).first()
@@ -606,7 +610,7 @@ def get_active_sessions(user_id: int, current_refresh_token: Optional[str], db: 
     current_hash = hash_token(current_refresh_token) if current_refresh_token else None
     
     # Clean up expired sessions first
-    now = datetime.now()
+    now = datetime.now(UTC)
     db.query(LoginSession).filter(LoginSession.expires_at < now).delete()
     db.commit()
     

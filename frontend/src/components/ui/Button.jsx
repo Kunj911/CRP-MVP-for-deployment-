@@ -1,9 +1,9 @@
 const VARIANTS = {
-  primary:  'bg-saffron-500 hover:bg-saffron-600 text-white shadow-sm',
-  secondary:'bg-cardamom-500 hover:bg-cardamom-600 text-white shadow-sm',
-  outline:  'border border-beige-300 hover:bg-beige-100 text-gray-700',
-  ghost:    'hover:bg-beige-100 text-gray-600',
-  danger:   'bg-red-500 hover:bg-red-600 text-white',
+  primary:  'bg-forest-700 hover:bg-forest-800 text-white shadow-sm',
+  secondary:'bg-forest-500 hover:bg-forest-600 text-white shadow-sm',
+  outline:  'border border-agri-200 hover:bg-agri-100 text-slate-700',
+  ghost:    'hover:bg-agri-100 text-slate-600',
+  danger:   'bg-red-600 hover:bg-red-700 text-white',
 }
 
 const SIZES = {
@@ -26,8 +26,9 @@ export default function Button({
     <button
       className={`
         inline-flex items-center justify-center font-medium rounded-lg
-        font-body transition-colors disabled:opacity-50 disabled:cursor-not-allowed
-        focus:outline-none focus:ring-2 focus:ring-saffron-500 focus:ring-offset-1
+        font-body transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed
+        active:scale-[0.97]
+        focus:outline-none focus:ring-2 focus:ring-forest-700 focus:ring-offset-1
         ${VARIANTS[variant]} ${SIZES[size]} ${className}
       `}
       disabled={loading || props.disabled}

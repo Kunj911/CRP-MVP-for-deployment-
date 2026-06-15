@@ -45,7 +45,7 @@ export default class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-beige-100 flex items-center justify-center p-6">
+        <div className="min-h-screen bg-agri-50 flex items-center justify-center p-6">
           <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
             {/* Error icon */}
             <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-red-50 flex items-center justify-center">
@@ -64,10 +64,10 @@ export default class ErrorBoundary extends Component {
               </svg>
             </div>
 
-            <h2 className="font-heading font-bold text-xl text-gray-900 mb-2">
+            <h2 className="font-heading font-bold text-xl text-slate-900 mb-2">
               Something went wrong
             </h2>
-            <p className="text-sm text-gray-500 font-body mb-6 leading-relaxed">
+            <p className="text-sm text-slate-500 font-body mb-6 leading-relaxed">
               An unexpected error occurred. This has been logged and our team
               will look into it. You can try reloading the page.
             </p>
@@ -75,13 +75,13 @@ export default class ErrorBoundary extends Component {
             <div className="flex gap-3 justify-center">
               <button
                 onClick={this.handleGoHome}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-body"
+                className="px-4 py-2 text-sm font-medium text-slate-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-body"
               >
                 Go Home
               </button>
               <button
                 onClick={this.handleReload}
-                className="px-4 py-2 text-sm font-medium text-white bg-saffron-600 rounded-lg hover:bg-saffron-700 transition-colors font-body"
+                className="px-4 py-2 text-sm font-medium text-white bg-forest-700 rounded-lg hover:bg-forest-800 transition-colors font-body"
               >
                 Reload Page
               </button>

@@ -148,8 +148,8 @@ export default function DocumentChecklist({ orderId, orderCode, onTimelineUpdate
   if (loading && !checklist.length) {
     return (
       <div className="py-12 text-center flex flex-col items-center justify-center gap-2">
-        <RefreshCw className="w-6 h-6 animate-spin text-saffron-500" />
-        <p className="text-sm text-gray-400 font-body">Loading checklist...</p>
+        <RefreshCw className="w-6 h-6 animate-spin text-forest-700" />
+        <p className="text-sm text-slate-400 font-body">Loading checklist...</p>
       </div>
     )
   }
@@ -167,15 +167,15 @@ export default function DocumentChecklist({ orderId, orderCode, onTimelineUpdate
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="font-heading font-semibold text-gray-800 text-sm">Export Documentation Checklist</h3>
-        <span className="text-xs text-gray-400 font-body">
+        <h3 className="font-heading font-semibold text-slate-800 text-sm">Export Documentation Checklist</h3>
+        <span className="text-xs text-slate-400 font-body">
           {checklist.filter(item => item.approved).length} / {checklist.filter(item => item.required).length} Required Approved
         </span>
       </div>
 
-      <div className="overflow-x-auto border border-beige-200 rounded-xl bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-beige-100 text-left text-sm font-body">
-          <thead className="bg-beige-50 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+      <div className="overflow-x-auto border border-agri-200 rounded-xl bg-white shadow-sm">
+        <table className="min-w-full divide-y divide-agri-100 text-left text-sm font-body">
+          <thead className="bg-agri-50 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
             <tr>
               <th className="px-4 py-3">Document Category</th>
               <th className="px-4 py-3">Requirement</th>
@@ -184,7 +184,7 @@ export default function DocumentChecklist({ orderId, orderCode, onTimelineUpdate
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-beige-100 bg-white">
+          <tbody className="divide-y divide-agri-100 bg-white">
             {checklist.map((item) => {
               // Match with loaded documents to get rich details (like filename and status)
               const matchedDoc = documents.find(d => d.id === item.document_id)
@@ -213,16 +213,14 @@ export default function DocumentChecklist({ orderId, orderCode, onTimelineUpdate
               }
 
               return (
-                <tr key={item.id} className="hover:bg-beige-50/30 transition-colors">
-                  {/* Category */}
-                  <td className="px-4 py-3.5 font-medium text-gray-800 font-heading">
+                <tr key={item.id} className="hover:bg-agri-50/30 transition-colors">
+                  <td className="px-4 py-3.5 font-medium text-slate-800 font-heading">
                     {DOC_TYPE_LABELS[item.document_type] ?? item.document_type}
                   </td>
                   
-                  {/* Required / Optional */}
                   <td className="px-4 py-3.5 whitespace-nowrap">
                     {item.required ? (
-                      <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-saffron-50 text-saffron-700 border border-saffron-100">
+                      <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-forest-50 text-forest-700 border border-forest-200">
                         Required
                       </span>
                     ) : (
@@ -232,47 +230,42 @@ export default function DocumentChecklist({ orderId, orderCode, onTimelineUpdate
                     )}
                   </td>
                   
-                  {/* Status Badge */}
                   <td className="px-4 py-3.5 whitespace-nowrap">
                     <Badge status={statusBadgeType} size="sm" />
                   </td>
                   
-                  {/* File details */}
                   <td className="px-4 py-3.5">
                     {matchedDoc ? (
                       <div className="max-w-[200px] sm:max-w-xs">
-                        <p className="text-xs text-gray-700 truncate font-heading" title={matchedDoc.file_name}>
+                        <p className="text-xs text-slate-700 truncate font-heading" title={matchedDoc.file_name}>
                           {matchedDoc.file_name}
                         </p>
-                        <p className="text-[10px] text-gray-400 mt-0.5">
+                        <p className="text-[10px] text-slate-400 mt-0.5">
                           {formatSize(matchedDoc.file_size)} · {dayjs(matchedDoc.uploaded_at).format('DD MMM YYYY')}
                         </p>
                       </div>
                     ) : (
-                      <span className="text-xs text-gray-400 italic">No file uploaded</span>
+                      <span className="text-xs text-slate-400 italic">No file uploaded</span>
                     )}
                   </td>
 
-                  {/* Actions */}
                   <td className="px-4 py-3.5 text-right whitespace-nowrap">
                     <div className="flex items-center justify-end gap-1.5">
-                      {/* Download */}
                       {matchedDoc && (
                         <button
                           onClick={() => handleDownload(matchedDoc.id, matchedDoc.file_name)}
-                          className="p-1.5 rounded-lg border border-beige-200 text-gray-500 hover:text-saffron-600 hover:bg-beige-100 transition-colors"
+                          className="p-1.5 rounded-lg border border-agri-200 text-slate-500 hover:text-forest-700 hover:bg-agri-100 transition-colors"
                           title="Download Document"
                         >
                           <Download size={14} />
                         </button>
                       )}
 
-                      {/* Approve / Reject (QA/Admin only) */}
                       {matchedDoc && !item.approved && canReview && (
                         <>
                           <button
                             onClick={() => handleApprove(matchedDoc.id)}
-                            className="p-1.5 rounded-lg border border-cardamom-200 text-cardamom-600 hover:bg-cardamom-50 transition-colors"
+                            className="p-1.5 rounded-lg border border-forest-200 text-forest-700 hover:bg-forest-50 transition-colors"
                             title="Approve"
                           >
                             <Check size={14} />
@@ -287,7 +280,6 @@ export default function DocumentChecklist({ orderId, orderCode, onTimelineUpdate
                         </>
                       )}
 
-                      {/* Delete (Admin only) */}
                       {matchedDoc && canDelete && (
                         <button
                           onClick={() => handleDelete(matchedDoc.id, matchedDoc.file_name)}
@@ -298,11 +290,10 @@ export default function DocumentChecklist({ orderId, orderCode, onTimelineUpdate
                         </button>
                       )}
 
-                      {/* Upload / Replace (Docs/Admin only) */}
                       {canUpload && (
                         <button
                           onClick={() => handleOpenUpload(item.document_type)}
-                          className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-lg border border-beige-300 text-gray-600 hover:border-saffron-500 hover:text-saffron-600 transition-colors"
+                          className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-lg border border-agri-300 text-slate-600 hover:border-forest-500 hover:text-forest-700 transition-colors"
                         >
                           <Upload size={12} />
                           {matchedDoc ? 'Replace' : 'Upload'}
@@ -343,7 +334,7 @@ export default function DocumentChecklist({ orderId, orderCode, onTimelineUpdate
             </div>
             
             <textarea
-              className="w-full border border-beige-300 rounded-lg p-2.5 text-sm focus:outline-none focus:border-saffron-400 font-body"
+              className="w-full border border-agri-300 rounded-lg p-2.5 text-sm focus:outline-none focus:border-forest-500 font-body"
               rows={3}
               placeholder="e.g. Commercial invoice amount mismatch, please upload revised version."
               value={remarks}

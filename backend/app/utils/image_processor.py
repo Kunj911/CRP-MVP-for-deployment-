@@ -157,7 +157,7 @@ def _convert_heic_to_jpeg(heic_bytes: bytes) -> bytes:
         )
         return heic_bytes
     except Exception as exc:
-        logger.warning("HEIC conversion failed: %s — using original bytes", exc)
+        logger.warning("HEIC conversion failed: %s - using original bytes", exc)
         return heic_bytes
 
 
