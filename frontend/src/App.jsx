@@ -24,8 +24,9 @@ export default function App() {
     return (
       <div className="min-h-screen bg-agri-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
+          <img src="/fittree-logo.png" alt="Fittree International LLP" className="h-10 w-auto object-contain mb-2" />
           <div className="w-10 h-10 border-3 border-forest-700 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-slate-500 font-body">Restoring session...</p>
+          <p className="text-sm text-slate-500 font-body">Loading Live-Trace...</p>
         </div>
       </div>
     )

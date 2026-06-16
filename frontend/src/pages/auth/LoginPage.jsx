@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Sprout, Eye, EyeOff, Shield, ChevronRight } from 'lucide-react'
+import { Eye, EyeOff, Shield, ChevronRight } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import useAuthStore from '../../store/authStore'
 import { authApi } from '../../api'
@@ -85,12 +85,10 @@ export default function LoginPage() {
         {/* Left panel — branding (desktop) */}
         <div className="hidden lg:flex flex-col justify-between w-[440px] p-12 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center border border-white/20">
-              <Sprout className="w-5 h-5 text-forest-300" />
-            </div>
+            <img src="/fittree-logo.png" alt="Fittree International LLP" className="h-10 w-auto object-contain" />
             <div>
               <span className="font-heading font-bold text-white text-xl">Live-Trace</span>
-              <p className="text-[11px] text-forest-200/70 font-body -mt-0.5">Agriculture Portal</p>
+              <p className="text-[11px] text-forest-200/70 font-body -mt-0.5">by Fittree International LLP</p>
             </div>
           </div>
 
@@ -128,9 +126,7 @@ export default function LoginPage() {
           <div className="w-full max-w-sm">
             {/* Mobile brand */}
             <div className="flex items-center gap-2 mb-8 lg:hidden">
-              <div className="w-9 h-9 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center border border-white/20">
-                <Sprout className="w-5 h-5 text-forest-300" />
-              </div>
+              <img src="/fittree-logo.png" alt="Fittree International LLP" className="h-8 w-auto object-contain" />
               <span className="font-heading font-bold text-white text-xl">Live-Trace</span>
             </div>
 
@@ -146,7 +142,7 @@ export default function LoginPage() {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@livetrace.com"
+                      placeholder="you@fittree.com"
                       required
                       className="w-full px-3.5 py-2.5 bg-white border border-agri-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 outline-none focus:ring-2 focus:ring-forest-700 focus:border-transparent transition font-body"
                     />
@@ -221,7 +217,7 @@ export default function LoginPage() {
             )}
 
             <p className="text-center text-white/50 text-xs font-body mt-4 lg:hidden">
-              Live-Trace Agriculture Portal
+              Live-Trace by Fittree International LLP
             </p>
           </div>
         </div>

@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Package, Upload, FileText,
-  Bell, Settings, LogOut, Sprout
+  Bell, Settings, LogOut
 } from 'lucide-react'
 import useAuthStore from '../../store/authStore'
 import { toast } from 'sonner'
@@ -40,12 +40,10 @@ export default function Sidebar() {
     <aside className="hidden md:flex flex-col w-60 min-h-screen bg-white border-r border-agri-200 shrink-0">
       {/* Brand */}
       <div className="flex items-center gap-3 px-6 py-5 border-b border-agri-200 bg-gradient-to-r from-forest-50 to-white">
-        <div className="w-9 h-9 rounded-xl bg-forest-700 flex items-center justify-center shadow-sm">
-          <Sprout className="w-5 h-5 text-white" />
-        </div>
+        <img src="/fittree-logo.png" alt="Fittree International LLP" className="h-9 w-auto object-contain" />
         <div>
           <p className="font-heading font-bold text-forest-800 text-base leading-tight">Live-Trace</p>
-          <p className="text-[11px] text-forest-600 font-body">Agriculture Portal</p>
+          <p className="text-[11px] text-forest-600 font-body">by Fittree International LLP</p>
         </div>
       </div>
 

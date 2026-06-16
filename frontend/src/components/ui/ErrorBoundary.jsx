@@ -68,8 +68,8 @@ export default class ErrorBoundary extends Component {
               Something went wrong
             </h2>
             <p className="text-sm text-slate-500 font-body mb-6 leading-relaxed">
-              An unexpected error occurred. This has been logged and our team
-              will look into it. You can try reloading the page.
+              An unexpected error occurred. The Live-Trace team has been
+              notified. You can try reloading the page.
             </p>
 
             <div className="flex gap-3 justify-center">

@@ -1,7 +1,7 @@
 """
 scripts/seed_db.py
 
-A utility script to populate the Live-Trace database from an Excel (.xlsx) or CSV file.
+    A utility script to populate the database from an Excel (.xlsx) or CSV file.
 Requires `pandas` and `openpyxl`.
 
 Usage:

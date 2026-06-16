@@ -1,7 +1,7 @@
 """
 main.py
 
-Live-Trace FastAPI application entry point.
+Live-Trace by Fittree International LLP — FastAPI application entry point.
 
 Responsibilities:
     - Create the FastAPI app instance

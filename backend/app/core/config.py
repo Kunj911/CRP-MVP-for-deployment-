@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     )
 
     # ── App settings ──────────────────────────────────────────────────────────
-    APP_NAME: str = "Client Relationship Portal"
+    APP_NAME: str = "Live-Trace"
     APP_ENV: Literal["development", "staging", "production"] = "development"
     DEBUG: bool = True
 
@@ -264,12 +264,12 @@ class Settings(BaseSettings):
             object.__setattr__(self, "SMTP_TLS", self.SMTP_USE_TLS)
 
         if not self.EMAIL_FROM:
-            from_email = self.SMTP_FROM_EMAIL or "noreply@example.com"
-            from_name = self.SMTP_FROM_NAME or "Client Relationship Portal"
+            from_email = self.SMTP_FROM_EMAIL or "noreply@fittree.com"
+            from_name = self.SMTP_FROM_NAME or "Fittree International LLP"
             object.__setattr__(self, "EMAIL_FROM", f"{from_name} <{from_email}>")
 
         if not self.EMAIL_FROM_NAME:
-            object.__setattr__(self, "EMAIL_FROM_NAME", self.SMTP_FROM_NAME or "Client Relationship Portal")
+            object.__setattr__(self, "EMAIL_FROM_NAME", self.SMTP_FROM_NAME or "Fittree International LLP")
 
         if self.EMAIL_PROVIDER.lower() == "smtp":
             object.__setattr__(self, "EMAIL_ENABLED", self.SMTP_ENABLED)

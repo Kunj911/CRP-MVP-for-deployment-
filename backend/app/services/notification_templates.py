@@ -33,13 +33,13 @@ def _email_shell(title: str, body: str) -> str:
     return f"""
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#1f2937;">
       <div style="background:#3A6B4A;padding:22px;border-radius:8px 8px 0 0;">
-        <h2 style="color:#ffffff;margin:0;">Client Relationship Portal</h2>
-        <p style="color:#D3EBD9;margin:4px 0 0;">{title}</p>
+        <h2 style="color:#ffffff;margin:0;">Live-Trace</h2>
+        <p style="color:#D3EBD9;margin:4px 0 0;font-size:13px;">by Fittree International LLP &mdash; {title}</p>
       </div>
       <div style="background:#FAFAF7;padding:24px;border:1px solid #EDE6D6;border-top:0;border-radius:0 0 8px 8px;">
         {body}
         <p style="color:#6b7280;font-size:12px;margin-top:24px;">
-          This is an automated transactional email from the Client Relationship Portal.
+          This is an automated transactional email from Live-Trace by Fittree International LLP.
         </p>
       </div>
     </div>
@@ -61,10 +61,10 @@ def login_alert_email(
     user_agent: str,
     dashboard_url: str,
 ) -> EmailTemplate:
-    subject = "[CRP] New admin login detected"
+    subject = "[Live-Trace] New admin login detected"
     body_text = (
         f"Hello {full_name},\n\n"
-        "A login was recorded for your CRP account.\n\n"
+        "A login was recorded for your Live-Trace account.\n\n"
         f"Role: {role}\n"
         f"Time: {login_time} UTC\n"
         f"IP address: {ip_address or 'Unknown'}\n"
@@ -75,7 +75,7 @@ def login_alert_email(
         "Security alert",
         f"""
         <p>Hello <strong>{full_name}</strong>,</p>
-        <p>A login was recorded for your CRP account.</p>
+        <p>A login was recorded for your Live-Trace account.</p>
         <div style="background:#FFF8EC;border-left:4px solid #E6820A;padding:12px 16px;border-radius:4px;">
           <p><strong>Role:</strong> {role}</p>
           <p><strong>Time:</strong> {login_time} UTC</p>
@@ -94,7 +94,7 @@ def password_reset_email(
     reset_url: str,
     expires_minutes: int = 30,
 ) -> EmailTemplate:
-    subject = "[CRP] Reset your password"
+    subject = "[Live-Trace] Reset your password"
     body_text = (
         f"Hello {full_name},\n\n"
         "Use the link below to reset your password.\n\n"
@@ -118,7 +118,7 @@ def customer_created_email(
     contact_name: str,
     portal_url: str,
 ) -> EmailTemplate:
-    subject = "[CRP] Your customer portal is ready"
+    subject = "[Live-Trace] Your customer portal is ready"
     greeting = contact_name or company_name
     body_text = (
         f"Hello {greeting},\n\n"
@@ -144,7 +144,7 @@ def order_created_email(
     product_name: str,
     portal_url: str,
 ) -> EmailTemplate:
-    subject = f"[CRP] Order {order_code} created"
+    subject = f"[Live-Trace] Order {order_code} created"
     order_url = f"{portal_url.rstrip('/')}/orders/{order_code}"
     body_text = (
         f"Dear {customer_name},\n\n"
@@ -198,21 +198,21 @@ def milestone_completed_email(
 
     body_html = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
-      <div style="background:#1a1a2e; padding:24px; border-radius:8px 8px 0 0;">
+      <div style="background:#3A6B4A; padding:24px; border-radius:8px 8px 0 0;">
         <h2 style="color:#ffffff; margin:0;">Live-Trace</h2>
-        <p style="color:#a0aec0; margin:4px 0 0;">Export Tracking Platform</p>
+        <p style="color:#D3EBD9; margin:4px 0 0;">by Fittree International LLP</p>
       </div>
       <div style="background:#f7fafc; padding:24px; border-radius:0 0 8px 8px;">
         <p style="font-size:16px;">Dear <strong>{customer_name}</strong>,</p>
         <p>Your order <strong>{order_code}</strong> has completed a new stage:</p>
-        <div style="background:#e6fffa; border-left:4px solid #38b2ac; padding:12px 16px; border-radius:4px; margin:16px 0;">
-          <strong style="font-size:18px; color:#2c7a7b;">✅ {stage_label}</strong><br/>
+        <div style="background:#EAF5ED; border-left:4px solid #3A6B4A; padding:12px 16px; border-radius:4px; margin:16px 0;">
+          <strong style="font-size:18px; color:#2C5238;">{stage_label}</strong><br/>
           <span style="color:#718096; font-size:13px;">Completed at {completed_at} UTC</span>
         </div>
         <a href="{dashboard_url}/orders/{order_code}"
-           style="display:inline-block; background:#667eea; color:#fff; padding:12px 24px;
+           style="display:inline-block; background:#3A6B4A; color:#fff; padding:12px 24px;
                   text-decoration:none; border-radius:6px; font-weight:bold; margin-top:8px;">
-          Track Your Order →
+          Track Your Order
         </a>
         <p style="color:#718096; font-size:12px; margin-top:24px;">
           You're receiving this because you have an active order with us.
@@ -262,20 +262,21 @@ def document_uploaded_email(
 
     body_html = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
-      <div style="background:#1a1a2e; padding:24px; border-radius:8px 8px 0 0;">
+      <div style="background:#3A6B4A; padding:24px; border-radius:8px 8px 0 0;">
         <h2 style="color:#ffffff; margin:0;">Live-Trace</h2>
+        <p style="color:#D3EBD9; margin:4px 0 0; font-size:13px;">by Fittree International LLP</p>
       </div>
       <div style="background:#f7fafc; padding:24px; border-radius:0 0 8px 8px;">
         <p style="font-size:16px;">Dear <strong>{customer_name}</strong>,</p>
         <p>A new document has been uploaded for order <strong>{order_code}</strong>:</p>
-        <div style="background:#ebf8ff; border-left:4px solid #4299e1; padding:12px 16px; border-radius:4px; margin:16px 0;">
-          <strong style="color:#2b6cb0;">📄 {doc_label}</strong><br/>
+        <div style="background:#EAF5ED; border-left:4px solid #3A6B4A; padding:12px 16px; border-radius:4px; margin:16px 0;">
+          <strong style="color:#2C5238;">{doc_label}</strong><br/>
           <span style="color:#718096; font-size:13px;">{file_name} &nbsp;·&nbsp; {uploaded_at} UTC</span>
         </div>
         <a href="{dashboard_url}/orders/{order_code}/documents"
-           style="display:inline-block; background:#4299e1; color:#fff; padding:12px 24px;
+           style="display:inline-block; background:#3A6B4A; color:#fff; padding:12px 24px;
                   text-decoration:none; border-radius:6px; font-weight:bold; margin-top:8px;">
-          View Documents →
+          View Documents
         </a>
       </div>
     </div>
@@ -327,22 +328,23 @@ def shipment_dispatched_email(
 
     body_html = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
-      <div style="background:#1a1a2e; padding:24px; border-radius:8px 8px 0 0;">
+      <div style="background:#3A6B4A; padding:24px; border-radius:8px 8px 0 0;">
         <h2 style="color:#ffffff; margin:0;">Live-Trace</h2>
+        <p style="color:#D3EBD9; margin:4px 0 0; font-size:13px;">by Fittree International LLP</p>
       </div>
       <div style="background:#f7fafc; padding:24px; border-radius:0 0 8px 8px;">
         <p style="font-size:16px;">Dear <strong>{customer_name}</strong>,</p>
-        <p style="font-size:18px;">🚢 Your shipment for order <strong>{order_code}</strong> is on its way!</p>
-        <div style="background:#fef9e7; border-left:4px solid #f6ad55; padding:12px 16px; border-radius:4px; margin:16px 0;">
-          <ul style="margin:0; padding-left:16px; color:#744210;">
+        <p style="font-size:18px;">Your shipment for order <strong>{order_code}</strong> is on its way!</p>
+        <div style="background:#EAF5ED; border-left:4px solid #3A6B4A; padding:12px 16px; border-radius:4px; margin:16px 0;">
+          <ul style="margin:0; padding-left:16px; color:#2C5238;">
             <li><strong>Dispatched at:</strong> {dispatched_at} UTC</li>
             {vessel_html}{bl_html}
           </ul>
         </div>
         <a href="{dashboard_url}/orders/{order_code}"
-           style="display:inline-block; background:#ed8936; color:#fff; padding:12px 24px;
+           style="display:inline-block; background:#3A6B4A; color:#fff; padding:12px 24px;
                   text-decoration:none; border-radius:6px; font-weight:bold; margin-top:8px;">
-          Track Shipment →
+          Track Shipment
         </a>
       </div>
     </div>

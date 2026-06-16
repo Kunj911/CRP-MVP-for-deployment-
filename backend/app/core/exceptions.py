@@ -1,7 +1,7 @@
 """
 app/core/exceptions.py
 
-Custom exception classes for the Live-Trace application.
+    Custom exception classes for the application.
 
 Raise these in service layer. The global exception handler in
 main.py converts them into the standard API error envelope:

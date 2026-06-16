@@ -6,8 +6,9 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; color: #1f2937; margin: 0; padding: 0; }
         .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .header { background: linear-gradient(135deg, #3b82f6, #2563eb); padding: 35px 20px; text-align: center; color: white; }
+        .header { background: linear-gradient(135deg, #3A6B4A, #2C5238); padding: 35px 20px; text-align: center; color: white; }
         .header h1 { margin: 0; font-size: 24px; font-weight: 700; }
+        .header p { margin: 6px 0 0 0; color: #D3EBD9; font-size: 13px; }
         .content { padding: 30px; line-height: 1.6; }
         .content p { margin: 0 0 15px 0; }
         .details-box { background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 20px; margin: 20px 0; }
@@ -15,14 +16,15 @@
         .details-box td { padding: 6px 0; font-size: 0.95rem; }
         .details-box td.label { font-weight: 600; color: #4b5563; width: 40%; }
         .button-container { text-align: center; margin: 30px 0 15px 0; }
-        .button { display: inline-block; padding: 12px 28px; background-color: #3b82f6; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 600; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.15); }
+        .button { display: inline-block; padding: 12px 28px; background-color: #3A6B4A; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 600; box-shadow: 0 4px 6px rgba(58, 107, 74, 0.15); }
         .footer { background-color: #f9fafb; padding: 20px; text-align: center; font-size: 0.875rem; color: #6b7280; border-top: 1px solid #f3f4f6; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Document Approved</h1>
+            <h1>Live-Trace</h1>
+            <p>by Fittree International LLP — Document Approved</p>
         </div>
         <div class="content">
             <p>Hello {{ customer_name }},</p>
@@ -54,10 +56,10 @@
             <div class="button-container">
                 <a href="{{ vault_url }}" class="button">View Document Vault</a>
             </div>
-            <p>Best regards,<br>The Fittree Operations Team</p>
+            <p>Best regards,<br>The Live-Trace Team</p>
         </div>
         <div class="footer">
-            &copy; 2026 Fittree Agri Commodities. All rights reserved.
+            &copy; 2026 Fittree International LLP. All rights reserved. &mdash; Powered by Live-Trace
         </div>
     </div>
 </body>

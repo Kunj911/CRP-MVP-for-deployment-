@@ -1,7 +1,7 @@
 """
 app/services/notification_service.py
 
-The notification engine for Live-Trace.
+    Notification engine for sending alerts and updates.
 
 Architecture:
   - Event-driven: callers fire trigger functions (send_milestone_alert, etc.)

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { Bell, Search, Sprout, Check, FileText, Package, Clock, Eye } from 'lucide-react'
+import { Bell, Search, Check, FileText, Package, Clock, Eye } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import useAuthStore from '../../store/authStore'
 import useNotificationStore from '../../store/notificationStore'
@@ -59,9 +59,7 @@ export default function Topbar() {
     <header className="sticky top-0 z-30 h-14 bg-white/95 backdrop-blur-sm border-b border-agri-200 flex items-center justify-between px-4 md:px-6">
       {/* Mobile brand */}
       <div className="flex items-center gap-2 md:hidden">
-        <div className="w-8 h-8 rounded-lg bg-forest-700 flex items-center justify-center">
-          <Sprout className="w-4 h-4 text-white" />
-        </div>
+        <img src="/fittree-logo.png" alt="Fittree International LLP" className="h-7 w-auto object-contain" />
         <span className="font-heading font-bold text-forest-800 text-base">Live-Trace</span>
       </div>
 
