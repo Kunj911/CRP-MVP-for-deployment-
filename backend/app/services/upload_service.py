@@ -33,7 +33,6 @@ import logging
 import os
 import tempfile
 import uuid
-from datetime import datetime, UTC
 
 import magic
 from typing import List, Optional
@@ -52,11 +51,11 @@ from app.core.exceptions import (
 from app.models.audit_log import AuditLog
 from app.models.document import Document
 from app.models.media_file import MediaFile
-from app.models.milestone import Milestone
+
 from app.models.order import Order
 from app.models.user import User
 from app.models.order_document_requirement import OrderDocumentRequirement
-from app.schemas.milestone import MilestoneStage, MilestoneStatus
+
 from app.schemas.upload import (
     DocumentResponse,
     DocumentType,
@@ -101,13 +100,6 @@ _PHOTO_UPLOAD_ROLES  = {"SUPER_ADMIN", "ADMIN", "WAREHOUSE", "QA"}
 _DOC_UPLOAD_ROLES    = {"SUPER_ADMIN", "ADMIN", "DOCUMENTATION", "QA"}
 _DELETE_ROLES        = {"SUPER_ADMIN", "ADMIN"}
 
-# Maps photo media_type → milestone stage for auto-completion
-_MEDIA_TO_MILESTONE = {
-    "PROCUREMENT_IMAGE": "PROCUREMENT",
-    "QA_IMAGE":          "QA_TESTING",
-    "PACKAGING_IMAGE":   "PACKAGING_COMPLETED",
-    "LOADING_IMAGE":     "CONTAINER_LOADING",
-}
 
 # INPUT-001: Server-side MIME → extension mapping
 # Never trust the client-supplied file extension — derive it from detected MIME.
@@ -370,32 +362,8 @@ async def upload_photo(
             ),
         )
 
-        # Auto-complete milestone based on media_type
-        try:
-            target_stage_str = _MEDIA_TO_MILESTONE.get(media_type.value)
-            target_stage = MilestoneStage(target_stage_str) if target_stage_str else None
-            if target_stage:
-                photo_milestone = db.query(Milestone).filter(
-                    Milestone.order_id == order_id,
-                    Milestone.stage_name == target_stage.value,
-                    Milestone.status != MilestoneStatus.COMPLETED.value
-                ).first()
-                if photo_milestone:
-                    photo_milestone.status = MilestoneStatus.COMPLETED.value
-                    photo_milestone.completed_by = current_user.id
-                    photo_milestone.completed_at = datetime.now(UTC)
-                    _log_audit(
-                        db=db,
-                        user_id=current_user.id,
-                        action_type="UPDATE",
-                        target_table="milestones",
-                        target_id=photo_milestone.id,
-                        order_id=order_id,
-                        description=f"Auto-completed '{target_stage.value}' milestone via photo upload: type={media_type.value} file='{file.filename}'",
-                    )
-        except Exception as exc:
-            logger.error("Failed to auto-complete milestone for photo upload: %s", exc)
-
+        # NOTE: Photo uploads are evidence-only. Milestone progression
+        # is driven exclusively by the manual "Mark Stage Complete" button.
         db.commit()
         db.refresh(media_record)
         logger.info(
@@ -587,29 +555,8 @@ async def upload_document(
             ),
         )
 
-        # Auto-complete DOCUMENTS_UPLOADED milestone
-        try:
-            docs_milestone = db.query(Milestone).filter(
-                Milestone.order_id == order_id,
-                Milestone.stage_name == MilestoneStage.DOCUMENTS_UPLOADED.value,
-                Milestone.status != MilestoneStatus.COMPLETED.value
-            ).first()
-            if docs_milestone:
-                docs_milestone.status = MilestoneStatus.COMPLETED.value
-                docs_milestone.completed_by = current_user.id
-                docs_milestone.completed_at = datetime.now(UTC)
-                _log_audit(
-                    db=db,
-                    user_id=current_user.id,
-                    action_type="UPDATE",
-                    target_table="milestones",
-                    target_id=docs_milestone.id,
-                    order_id=order_id,
-                    description=f"Auto-completed 'DOCUMENTS_UPLOADED' milestone via document upload: type={document_type.value} file='{file.filename}'",
-                )
-        except Exception as exc:
-            logger.error("Failed to auto-complete DOCUMENTS_UPLOADED milestone: %s", exc)
-
+        # NOTE: Document uploads are evidence-only. Milestone progression
+        # is driven exclusively by the manual "Mark Stage Complete" button.
         db.commit()
         db.refresh(doc_record)
         logger.info(
@@ -935,29 +882,9 @@ def approve_document(doc_id: int, current_user: User, db: Session) -> Document:
     from app.tasks.document_tasks import send_document_approved_email
     _queue_document_email(send_document_approved_email, doc.order_id, doc.id)
 
-    # Auto-complete DOCUMENTS_UPLOADED milestone on approval (belt-and-suspenders)
-    try:
-        docs_milestone = db.query(Milestone).filter(
-            Milestone.order_id == doc.order_id,
-            Milestone.stage_name == MilestoneStage.DOCUMENTS_UPLOADED.value,
-            Milestone.status != MilestoneStatus.COMPLETED.value
-        ).first()
-        if docs_milestone:
-            docs_milestone.status = MilestoneStatus.COMPLETED.value
-            docs_milestone.completed_by = current_user.id
-            docs_milestone.completed_at = datetime.now(UTC)
-            _log_audit(
-                db=db,
-                user_id=current_user.id,
-                action_type="UPDATE",
-                target_table="milestones",
-                target_id=docs_milestone.id,
-                order_id=doc.order_id,
-                description=f"Auto-completed 'DOCUMENTS_UPLOADED' milestone via document approval: type={doc.document_type} file='{doc.file_name}'",
-            )
-    except Exception as exc:
-        logger.error("Failed to auto-complete DOCUMENTS_UPLOADED milestone on approval: %s", exc)
-    
+    # NOTE: Document approval is evidence-only. Milestone progression
+    # is driven exclusively by the manual "Mark Stage Complete" button.
+
     db.commit()
     db.refresh(doc)
     return doc
