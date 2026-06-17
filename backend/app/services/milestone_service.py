@@ -464,7 +464,26 @@ def complete_current_stage(
     ).first()
 
     if not current:
-        # No active milestone — check if first one hasn't been started yet
+        # Check if any milestones exist at all for this order
+        total_milestones = db.query(Milestone).filter(
+            Milestone.order_id == order_id
+        ).count()
+
+        if total_milestones == 0:
+            # Auto-initialize all 9 milestones for this order
+            from app.schemas.milestone import STAGE_SEQUENCE
+            for stage in STAGE_SEQUENCE:
+                db.add(Milestone(
+                    order_id=order_id,
+                    stage_name=stage.value,
+                    status=MilestoneStatus.PENDING.value,
+                ))
+            db.flush()
+            logger.info(
+                "Auto-initialized all milestones for order_id=%s", order_id
+            )
+
+        # Find first pending milestone (either existing or freshly created)
         first_pending = (
             db.query(Milestone)
             .filter(
@@ -474,26 +493,16 @@ def complete_current_stage(
             .order_by(Milestone.id)
             .first()
         )
+
         if first_pending:
             # Auto-start the first pending milestone
             first_pending.status = MilestoneStatus.IN_PROGRESS.value
             db.flush()
             current = first_pending
         else:
-            all_completed = (
-                db.query(Milestone)
-                .filter(
-                    Milestone.order_id == order_id,
-                    Milestone.status != MilestoneStatus.COMPLETED.value,
-                )
-                .count()
-            )
-            if all_completed == 0:
-                raise ValidationException(
-                    "All stages for this order are already completed."
-                )
+            # All stages must be completed
             raise ValidationException(
-                "No active stage found. The first milestone may need to be started."
+                "All stages for this order are already completed."
             )
 
     # Use the existing update logic
