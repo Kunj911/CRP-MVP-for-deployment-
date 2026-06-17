@@ -42,6 +42,7 @@ export const milestonesApi = {
   listByOrder: (orderId) => apiClient.get(`/orders/${orderId}/milestones`),
   create: (orderId, data) => apiClient.post(`/orders/${orderId}/milestones`, data),
   update: (milestoneId, data) => apiClient.patch(`/milestones/${milestoneId}`, data), // { status, remarks }
+  completeStage: (orderId) => apiClient.post(`/orders/${orderId}/complete-stage`),
 }
 
 /**

@@ -28,7 +28,7 @@ from typing import List
 
 from fastapi import APIRouter
 
-from app.api.deps import AdminUser, CurrentUser, DbSession
+from app.api.deps import AdminUser, CurrentUser, DbSession, WarehouseUser
 from app.core.exceptions import ForbiddenException
 from app.schemas.common import SuccessResponse
 from app.schemas.milestone import (
@@ -203,6 +203,43 @@ def get_order_timeline(
     return SuccessResponse(
         data=timeline,
         message=f"Timeline retrieved. Progress: {timeline.overall_progress}%",
+    )
+
+
+# ── POST /orders/{order_id}/complete-stage ─────────────────────────────────────
+
+@router.post(
+    "/orders/{order_id}/complete-stage",
+    response_model=SuccessResponse[MilestoneResponse],
+    summary="Mark current stage complete",
+    description=(
+        "Finds the current IN_PROGRESS milestone for the order and marks it COMPLETED. "
+        "The next pending milestone is automatically advanced to IN_PROGRESS.\n\n"
+        "Rules:\n"
+        "- Only SUPER_ADMIN, ADMIN, and WAREHOUSE can progress stages\n"
+        "- Cannot complete a stage that is already COMPLETED\n"
+        "- Cannot skip stages — only the current active stage can be completed\n"
+        "- If no stage is active, the first pending stage will be auto-started first\n\n"
+        "On completion:\n"
+        "- completed_at and completed_by are saved\n"
+        "- An OrderEvent is recorded for the timeline\n"
+        "- An audit log entry is created\n"
+        "- A customer notification is triggered"
+    ),
+)
+def mark_stage_complete(
+    order_id: int,
+    current_user: WarehouseUser,
+    db: DbSession,
+) -> SuccessResponse[MilestoneResponse]:
+    milestone = milestone_service.complete_current_stage(
+        order_id=order_id,
+        current_user=current_user,
+        db=db,
+    )
+    return SuccessResponse(
+        data=milestone,
+        message=f"Stage '{milestone.stage_name.value}' completed successfully",
     )
 
 

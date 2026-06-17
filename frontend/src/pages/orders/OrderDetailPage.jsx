@@ -259,7 +259,7 @@ export default function OrderDetailPage() {
         {/* Tab content */}
         <div className="p-5">
           {activeTab === 'Timeline' && (
-            <MilestoneTimeline milestones={milestones} />
+            <MilestoneTimeline milestones={milestones} orderId={order.id} onStageComplete={loadData} />
           )}
 
           {activeTab === 'Photos' && (

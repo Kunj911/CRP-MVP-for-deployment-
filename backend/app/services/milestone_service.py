@@ -431,6 +431,81 @@ def update_milestone_status(
     return _to_response(milestone)
 
 
+# ── Complete current stage (simple progression) ────────────────────────────────
+
+_PROGRESS_ROLES = {"SUPER_ADMIN", "ADMIN", "WAREHOUSE"}
+
+def _assert_can_progress(current_user: User) -> None:
+    """Only SUPER_ADMIN, ADMIN, and WAREHOUSE can progress stages."""
+    if current_user.role not in _PROGRESS_ROLES:
+        raise ForbiddenException(
+            "Only SUPER_ADMIN, ADMIN, or WAREHOUSE can mark stages complete"
+        )
+
+
+def complete_current_stage(
+    order_id: int,
+    current_user: User,
+    db: Session,
+) -> MilestoneResponse:
+    """
+    Mark the current IN_PROGRESS milestone as COMPLETED and auto-advance.
+
+    This is the simple "Mark Stage Complete" action — finds whichever
+    milestone is currently active, completes it, and advances the order.
+    """
+    _assert_can_progress(current_user)
+    _get_order_or_404(order_id, db)
+
+    # Find the current active milestone
+    current = db.query(Milestone).filter(
+        Milestone.order_id == order_id,
+        Milestone.status == MilestoneStatus.IN_PROGRESS.value,
+    ).first()
+
+    if not current:
+        # No active milestone — check if first one hasn't been started yet
+        first_pending = (
+            db.query(Milestone)
+            .filter(
+                Milestone.order_id == order_id,
+                Milestone.status == MilestoneStatus.PENDING.value,
+            )
+            .order_by(Milestone.id)
+            .first()
+        )
+        if first_pending:
+            # Auto-start the first pending milestone
+            first_pending.status = MilestoneStatus.IN_PROGRESS.value
+            db.flush()
+            current = first_pending
+        else:
+            all_completed = (
+                db.query(Milestone)
+                .filter(
+                    Milestone.order_id == order_id,
+                    Milestone.status != MilestoneStatus.COMPLETED.value,
+                )
+                .count()
+            )
+            if all_completed == 0:
+                raise ValidationException(
+                    "All stages for this order are already completed."
+                )
+            raise ValidationException(
+                "No active stage found. The first milestone may need to be started."
+            )
+
+    # Use the existing update logic
+    update_data = MilestoneStatusUpdate(status=MilestoneStatus.COMPLETED)
+    return update_milestone_status(
+        milestone_id=current.id,
+        data=update_data,
+        current_user=current_user,
+        db=db,
+    )
+
+
 # ── Get order timeline ────────────────────────────────────────────────────────
 
 def get_order_timeline(
