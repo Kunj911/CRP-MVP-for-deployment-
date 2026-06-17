@@ -160,6 +160,137 @@ def create_order_with_new_customer(
     )
 
 
+# ── GET /orders/client-dashboard ──────────────────────────────────────────────
+
+@router.get(
+    "/client-dashboard",
+    summary="Get client dashboard data",
+    description=(
+        "Returns KPIs, status distribution, top products, recent activity, "
+        "and recent orders for the client-facing dashboard. "
+        "CUSTOMER role sees only their own orders."
+    ),
+)
+def get_client_dashboard(
+    current_user: CurrentUser,
+    db: DbSession,
+):
+    from app.models.order import Order
+    from app.models.order_product import OrderProduct
+    from app.models.order_event import OrderEvent
+    from app.models.order_document_requirement import OrderDocumentRequirement
+    from sqlalchemy import func
+
+    STATUS_PROGRESS_MAP = {
+        "CREATED": 5,
+        "PROCUREMENT": 15,
+        "QA_TESTING": 35,
+        "PACKAGING": 50,
+        "DOCUMENTATION": 65,
+        "READY_FOR_SHIPMENT": 78,
+        "SHIPPED": 90,
+        "SHIPMENT_DISPATCHED": 90,
+        "DELIVERED": 100,
+        "CANCELLED": 0,
+    }
+
+    customer_id = current_user.customer_id if current_user.role == "CUSTOMER" else None
+
+    def _scope(q):
+        return q.filter(Order.customer_id == customer_id) if customer_id else q
+
+    # 1. KPI counts
+    base = db.query(Order)
+    total_orders = _scope(base).count()
+    active_orders = _scope(base).filter(
+        Order.shipment_status.notin_(["DELIVERED", "CANCELLED"])
+    ).count()
+    completed_orders = _scope(base).filter(
+        Order.shipment_status == "DELIVERED"
+    ).count()
+
+    # Pending documents across active orders
+    pending_docs = 0
+    active_order_ids = [
+        r[0] for r in _scope(
+            db.query(Order.order_id).filter(Order.shipment_status.notin_(["DELIVERED", "CANCELLED"]))
+        ).all()
+    ]
+    if active_order_ids:
+        pending_docs = db.query(func.count(OrderDocumentRequirement.id)).filter(
+            OrderDocumentRequirement.order_id.in_(active_order_ids),
+            OrderDocumentRequirement.required == True,
+            OrderDocumentRequirement.approved == False,
+        ).scalar() or 0
+
+    # 2. Orders by status
+    status_rows = _scope(
+        db.query(Order.shipment_status, func.count(Order.order_id))
+    ).group_by(Order.shipment_status).all()
+
+    orders_by_status = [
+        {"status": s.value, "count": c} for s, c in status_rows
+    ]
+
+    # 3. Top 5 products
+    product_q = db.query(
+        OrderProduct.product_name,
+        func.sum(OrderProduct.quantity).label("total_quantity"),
+        OrderProduct.unit,
+    ).join(Order, OrderProduct.order_id == Order.order_id)
+    product_q = _scope(product_q)
+    top_products = [
+        {
+            "product_name": r.product_name,
+            "total_quantity": float(r.total_quantity or 0),
+            "unit": r.unit or "kg",
+        }
+        for r in product_q.group_by(
+            OrderProduct.product_name, OrderProduct.unit
+        ).order_by(func.sum(OrderProduct.quantity).desc()).limit(5).all()
+    ]
+
+    # 4. Recent activity
+    event_q = db.query(OrderEvent).join(Order, OrderEvent.order_id == Order.order_id)
+    event_q = _scope(event_q)
+    recent_activity = [
+        {
+            "type": e.event_type,
+            "order_id": e.order_id,
+            "description": e.description,
+            "timestamp": e.created_at.isoformat() if e.created_at else None,
+        }
+        for e in event_q.order_by(OrderEvent.created_at.desc()).limit(15).all()
+    ]
+
+    # 5. Recent orders
+    order_q = _scope(db.query(Order)).order_by(Order.created_at.desc()).limit(10).all()
+    recent_orders = [
+        {
+            "id": o.order_id,
+            "order_code": o.order_code,
+            "status": o.shipment_status.value,
+            "overall_progress": STATUS_PROGRESS_MAP.get(o.shipment_status.value, 0),
+            "created_at": o.created_at.isoformat() if o.created_at else None,
+        }
+        for o in order_q
+    ]
+
+    return {
+        "status": "success",
+        "data": {
+            "total_orders": total_orders,
+            "active_orders": active_orders,
+            "completed_orders": completed_orders,
+            "pending_documents": pending_docs,
+            "orders_by_status": orders_by_status,
+            "top_products": top_products,
+            "recent_activity": recent_activity,
+            "recent_orders": recent_orders,
+        },
+    }
+
+
 # ── GET /orders/dashboard/stats ───────────────────────────────────────────────
 
 @router.get(

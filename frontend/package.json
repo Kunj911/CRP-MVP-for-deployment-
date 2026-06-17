@@ -17,6 +17,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.23.1",
+    "recharts": "^3.8.1",
     "sonner": "^1.4.41",
     "zustand": "^4.5.2"
   },

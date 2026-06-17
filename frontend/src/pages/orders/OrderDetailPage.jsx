@@ -241,7 +241,7 @@ export default function OrderDetailPage() {
       </div>
 
       {/* Products Section */}
-      {products.length > 1 && (
+      {products.length > 0 && (
         <div className="bg-white rounded-xl border border-agri-200 shadow-card p-4 space-y-3">
           <div className="flex items-center gap-2 border-b border-agri-100 pb-2">
             <Package size={16} className="text-forest-700" />

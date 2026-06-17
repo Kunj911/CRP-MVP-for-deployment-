@@ -33,6 +33,7 @@ export const ordersApi = {
   update: (orderId, data) => apiClient.patch(`/orders/${orderId}`, data),
   getTimeline: (orderId) => apiClient.get(`/orders/${orderId}/timeline`),
   getDashboardStats: () => apiClient.get('/orders/dashboard/stats'),
+  getClientDashboard: () => apiClient.get('/orders/client-dashboard'),
 }
 
 /**
