@@ -33,6 +33,7 @@ COPY templates ./templates
 COPY main.py .
 COPY alembic.ini .
 COPY alembic ./alembic
+COPY scripts/startup.sh ./startup.sh
 
 # Create uploads directory (ephemeral on Railway)
 RUN mkdir -p /app/uploads
@@ -48,5 +49,6 @@ EXPOSE ${PORT}
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:${PORT}/health || exit 1
 
-# Start with shell form so ${PORT} is expanded at runtime
-CMD uvicorn main:app --host 0.0.0.0 --port ${PORT}
+# Make startup script executable and use it
+RUN chmod +x ./startup.sh
+CMD ["./startup.sh"]

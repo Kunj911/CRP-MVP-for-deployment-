@@ -38,6 +38,7 @@ from app.core.exceptions import (
 from app.models.audit_log import AuditLog
 from app.models.customer import Customer
 from app.models.order import Order
+from app.models.order_product import OrderProduct
 from app.models.user import User
 from app.schemas.common import PaginationMeta
 from app.core.security import hash_password
@@ -48,6 +49,7 @@ from app.schemas.order import (
     OrderListItem,
     OrderStatusUpdate,
     OrderUpdate,
+    ProductCreate,
     ShipmentStatus,
     VALID_TRANSITIONS,
     OrderWithNewCustomerCreate,
@@ -111,6 +113,24 @@ def _assert_can_write(current_user: User) -> None:
         )
 
 
+def _sync_order_products(
+    order_id: int,
+    products_data: list,
+    db: Session,
+) -> None:
+    """Replace all order_products for an order with a new list."""
+    db.query(OrderProduct).filter(OrderProduct.order_id == order_id).delete()
+    for p in products_data:
+        db.add(OrderProduct(
+            order_id=order_id,
+            product_name=p.product_name.strip(),
+            quantity=p.quantity,
+            unit=p.unit,
+            notes=p.notes,
+        ))
+    db.flush()
+
+
 # ── Create ────────────────────────────────────────────────────────────────────
 
 def create_order(
@@ -124,6 +144,7 @@ def create_order(
     - Validates customer exists
     - Generates unique order_code (retries on collision)
     - Sets initial status = CREATED
+    - Creates order_products if provided
     - Writes audit log
     """
     _assert_can_write(current_user)
@@ -138,12 +159,20 @@ def create_order(
         if attempt == 4:
             raise ConflictException("Could not generate a unique order code. Please retry.")
 
+    product_name = data.product_name or (data.products[0].product_name if data.products else "")
+    if data.products:
+        quantity = data.products[0].quantity or data.quantity
+        unit = data.products[0].unit or data.unit
+    else:
+        quantity = data.quantity
+        unit = data.unit
+
     order = Order(
         order_code=code,
         customer_id=data.customer_id,
-        product_name=data.product_name.strip(),
-        quantity=data.quantity,
-        unit=data.unit,
+        product_name=product_name,
+        quantity=quantity,
+        unit=unit,
         shipment_status=ShipmentStatus.CREATED.value,
         expected_dispatch_date=data.expected_dispatch_date,
         expected_delivery_date=data.expected_delivery_date,
@@ -152,6 +181,10 @@ def create_order(
     )
     db.add(order)
     db.flush()  # get order.id before audit log
+
+    # Create order_products
+    if data.products:
+        _sync_order_products(order.id, data.products, db)
 
     _log_audit(
         db=db,
@@ -254,6 +287,18 @@ def list_orders(
     logger.info("TEMPORARY LOG: Number of returned records: %d", len(rows))
 
     # ── Build flat dicts for OrderListItem ────────────────────────────────────
+    order_ids = [order.id for order, _, _ in rows]
+    product_counts = {}
+    if order_ids:
+        from sqlalchemy import func
+        counts = (
+            db.query(OrderProduct.order_id, func.count(OrderProduct.id))
+            .filter(OrderProduct.order_id.in_(order_ids))
+            .group_by(OrderProduct.order_id)
+            .all()
+        )
+        product_counts = {oid: cnt for oid, cnt in counts}
+
     items = []
     for order, company_name, country in rows:
         d = {
@@ -265,6 +310,7 @@ def list_orders(
             "product_name": order.product_name,
             "quantity": order.quantity,
             "unit": order.unit,
+            "product_count": product_counts.get(order.id, 1 if order.product_name else 0),
             "shipment_status": order.shipment_status,
             "expected_dispatch_date": order.expected_dispatch_date,
             "expected_delivery_date": order.expected_delivery_date,
@@ -299,6 +345,7 @@ def get_order_by_id(
         .options(
             joinedload(Order.customer),
             joinedload(Order.creator),
+            joinedload(Order.products),
         )
         .filter(Order.id == order_id)
         .first()
@@ -344,6 +391,11 @@ def update_order(
             raise ValidationException(
                 "expected_delivery_date cannot be before expected_dispatch_date"
             )
+
+    # Sync products if provided
+    if "products" in update_data and data.products is not None:
+        _sync_order_products(order.id, data.products, db)
+        updated_fields.append("products")
 
     _log_audit(
         db=db,
@@ -663,12 +715,20 @@ def create_order_with_new_customer(
             if attempt == 4:
                 raise ConflictException("Could not generate a unique order code. Please retry.")
 
+        product_name = data.order.product_name or (data.order.products[0].product_name if data.order.products else "")
+        if data.order.products:
+            quantity = data.order.products[0].quantity or data.order.quantity
+            unit = data.order.products[0].unit or data.order.unit
+        else:
+            quantity = data.order.quantity
+            unit = data.order.unit
+
         order = Order(
             order_code=code,
             customer_id=customer.id,
-            product_name=data.order.product_name.strip(),
-            quantity=data.order.quantity,
-            unit=data.order.unit,
+            product_name=product_name,
+            quantity=quantity,
+            unit=unit,
             shipment_status=ShipmentStatus.CREATED.value,
             expected_dispatch_date=data.order.expected_dispatch_date,
             expected_delivery_date=data.order.expected_delivery_date,
@@ -677,6 +737,10 @@ def create_order_with_new_customer(
         )
         db.add(order)
         db.flush()  # Generate order.id
+
+        # Create order_products
+        if data.order.products:
+            _sync_order_products(order.id, data.order.products, db)
 
         # 5. Initialize milestones (commit=False to keep them in this transaction)
         from app.services.milestone_service import initialize_all_milestones
@@ -730,3 +794,64 @@ def create_order_with_new_customer(
         logger.error("Failed to send post-onboarding notifications: %s", n_exc)
 
     return order
+
+
+# ── Dashboard aggregation helpers ──────────────────────────────────────────────
+
+def get_top_products(
+    db: Session,
+    limit: int = 10,
+    exclude_statuses: Optional[list[str]] = None,
+) -> list[dict]:
+    """Return the most-often ordered products across non-excluded orders.
+    Future use: Top Products dashboard widget."""
+    if exclude_statuses is None:
+        exclude_statuses = ["CANCELLED"]
+    from sqlalchemy import func as sa_func
+    results = (
+        db.query(
+            OrderProduct.product_name,
+            sa_func.count(OrderProduct.id).label("order_count"),
+            sa_func.sum(OrderProduct.quantity).label("total_quantity"),
+        )
+        .join(Order, OrderProduct.order_id == Order.id)
+        .filter(~Order.shipment_status.in_(exclude_statuses))
+        .group_by(OrderProduct.product_name)
+        .order_by(sa_func.count(OrderProduct.id).desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "product_name": r.product_name,
+            "order_count": r.order_count,
+            "total_quantity": float(r.total_quantity) if r.total_quantity else 0,
+        }
+        for r in results
+    ]
+
+
+def get_product_distribution(
+    db: Session,
+    exclude_statuses: Optional[list[str]] = None,
+) -> list[dict]:
+    """Return product distribution per order.
+    Future use: Product Distribution chart widget."""
+    if exclude_statuses is None:
+        exclude_statuses = ["CANCELLED"]
+    from sqlalchemy import func as sa_func
+    results = (
+        db.query(
+            OrderProduct.product_name,
+            sa_func.count(OrderProduct.id).label("total_orders"),
+        )
+        .join(Order, OrderProduct.order_id == Order.id)
+        .filter(~Order.shipment_status.in_(exclude_statuses))
+        .group_by(OrderProduct.product_name)
+        .order_by(sa_func.count(OrderProduct.id).desc())
+        .all()
+    )
+    return [
+        {"product_name": r.product_name, "total_orders": r.total_orders}
+        for r in results
+    ]

@@ -94,6 +94,7 @@ export const uploadsApi = {
  * DOCUMENTS
  */
 export const documentsApi = {
+  vault: () => apiClient.get('/documents/vault'),
   listByOrder: (orderId) => apiClient.get(`/orders/${orderId}/documents`),
   delete: (docId) => apiClient.delete(`/documents/${docId}`),
   approve: (docId) => apiClient.post(`/documents/${docId}/approve`),

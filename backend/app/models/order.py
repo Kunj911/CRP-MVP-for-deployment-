@@ -38,6 +38,7 @@ if TYPE_CHECKING:
     from app.models.user import User
     from app.models.order_document_requirement import OrderDocumentRequirement
     from app.models.order_event import OrderEvent
+    from app.models.order_product import OrderProduct
 
 
 
@@ -142,7 +143,9 @@ class Order(Base):
     events: Mapped[List["OrderEvent"]] = relationship(
         "OrderEvent", back_populates="order", cascade="all, delete-orphan", lazy="select"
     )
-
+    products: Mapped[List["OrderProduct"]] = relationship(
+        "OrderProduct", back_populates="order", cascade="all, delete-orphan", lazy="select"
+    )
 
     def __repr__(self) -> str:
         return (

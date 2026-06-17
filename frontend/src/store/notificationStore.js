@@ -76,7 +76,7 @@ const useNotificationStore = create((set, get) => ({
     get().fetchNotifications()
     const pollerId = window.setInterval(() => {
       get().fetchNotifications()
-    }, 15000) // Poll every 15s
+    }, 60000) // Poll every 60s
 
     set({ pollerId })
   },

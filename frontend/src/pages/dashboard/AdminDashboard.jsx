@@ -102,7 +102,7 @@ export default function AdminDashboard() {
     }
 
     fetchDashboardData()
-    const intervalId = window.setInterval(fetchDashboardData, 15000)
+    const intervalId = window.setInterval(fetchDashboardData, 60000)
 
     return () => {
       isMounted = false

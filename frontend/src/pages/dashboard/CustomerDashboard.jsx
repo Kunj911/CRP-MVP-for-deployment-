@@ -86,7 +86,7 @@ export default function CustomerDashboard() {
 
   useEffect(() => {
     fetchDashboardStats(true)
-    const intervalId = window.setInterval(() => fetchDashboardStats(false), 15000)
+    const intervalId = window.setInterval(() => fetchDashboardStats(false), 60000)
 
     return () => {
       window.clearInterval(intervalId)

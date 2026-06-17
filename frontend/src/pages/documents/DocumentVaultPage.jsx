@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Search, FolderOpen, Loader2 } from 'lucide-react'
 import DocumentVault from '../../components/documents/DocumentVault'
-import { ordersApi, documentsApi } from '../../api'
+import { documentsApi } from '../../api'
 
 export default function DocumentVaultPage() {
   const [search, setSearch] = useState('')
@@ -15,30 +15,26 @@ export default function DocumentVaultPage() {
       try {
         setLoading(true)
         setError(null)
-        const ordersRes = await ordersApi.list({ page: 1, per_page: 100 })
-        const ordersList = Array.isArray(ordersRes.data?.data) ? ordersRes.data.data : []
-        
-        const docsPromises = ordersList.map(async (order) => {
-          try {
-            const docsRes = await documentsApi.listByOrder(order.id)
-            const documents = Array.isArray(docsRes.data?.data) ? docsRes.data.data : []
-            return {
-              order_code: order.order_code,
-              customer_name: order.company_name || order.customer?.company_name || order.customer_name || 'N/A',
-              commodity: order.product_name || order.commodity_name || 'N/A',
-              documents: documents,
+        const res = await documentsApi.vault()
+        const docs = Array.isArray(res.data?.data) ? res.data.data : []
+
+        // Group documents by order_code
+        const grouped = {}
+        for (const doc of docs) {
+          const key = doc.order_code
+          if (!grouped[key]) {
+            grouped[key] = {
+              order_code: doc.order_code,
+              customer_name: doc.customer_name,
+              commodity: doc.commodity_name,
+              documents: [],
             }
-          } catch (err) {
-            console.error(`Error loading docs for order ${order.id}:`, err)
-            return null
           }
-        })
-        
-        const results = await Promise.all(docsPromises)
-        const filteredResults = results.filter((res) => res !== null && res.documents.length > 0)
-        
+          grouped[key].documents.push(doc)
+        }
+
         if (isMounted) {
-          setOrdersWithDocs(filteredResults)
+          setOrdersWithDocs(Object.values(grouped))
         }
       } catch (err) {
         console.error('Error loading document vault:', err)

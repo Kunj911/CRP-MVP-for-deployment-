@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Upload, Loader2, AlertCircle, Trash2, Edit3 } from 'lucide-react'
+import { ArrowLeft, Upload, Loader2, AlertCircle, Trash2, Edit3, Package } from 'lucide-react'
 import MilestoneTimeline from '../../components/milestone/MilestoneTimeline'
 import DocumentChecklist from '../../components/documents/DocumentChecklist'
 import UploadModal from '../../components/upload/UploadModal'
@@ -37,6 +37,7 @@ export default function OrderDetailPage() {
   const [milestones, setMilestones] = useState([])
   const [photos, setPhotos] = useState([])
   const [documents, setDocuments] = useState([])
+  const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -44,23 +45,21 @@ export default function OrderDetailPage() {
     try {
       setError(null)
       
-      // Fetch order details
-      const orderRes = await ordersApi.getById(orderId)
+      // Fetch all data in parallel — no waterfall
+      const [orderRes, timelineRes, photosRes, docsRes] = await Promise.all([
+        ordersApi.getById(orderId),
+        ordersApi.getTimeline(orderId),
+        uploadsApi.listMediaByOrder(orderId),
+        documentsApi.listByOrder(orderId),
+      ])
+
       const rawOrder = orderRes.data?.data
       if (!rawOrder) {
         throw new Error('Order not found')
       }
 
-      // Fetch timeline (milestones + progress)
-      const timelineRes = await ordersApi.getTimeline(orderId)
       const timeline = timelineRes.data?.data
-
-      // Fetch photos
-      const photosRes = await uploadsApi.listMediaByOrder(orderId)
       const rawPhotos = Array.isArray(photosRes.data?.data) ? photosRes.data.data : []
-
-      // Fetch documents
-      const docsRes = await documentsApi.listByOrder(orderId)
       const rawDocs = Array.isArray(docsRes.data?.data) ? docsRes.data.data : []
 
       // Normalize order details
@@ -92,6 +91,9 @@ export default function OrderDetailPage() {
 
       // Set documents
       setDocuments(rawDocs)
+
+      // Set products
+      setProducts(Array.isArray(rawOrder.products) ? rawOrder.products : [])
     } catch (err) {
       console.error('Error fetching order details:', err)
       const status = err.response?.status
@@ -237,6 +239,33 @@ export default function OrderDetailPage() {
           <p className="text-sm font-medium text-slate-800 font-heading">{order.customer_name}</p>
         </div>
       </div>
+
+      {/* Products Section */}
+      {products.length > 1 && (
+        <div className="bg-white rounded-xl border border-agri-200 shadow-card p-4 space-y-3">
+          <div className="flex items-center gap-2 border-b border-agri-100 pb-2">
+            <Package size={16} className="text-forest-700" />
+            <h2 className="font-heading font-semibold text-sm text-slate-900">Products ({products.length})</h2>
+          </div>
+          <div className="space-y-2">
+            {products.map((p) => (
+              <div key={p.id} className="flex items-center justify-between p-3 bg-agri-50 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-slate-900 font-heading">{p.product_name}</p>
+                  {(p.quantity || p.unit) && (
+                    <p className="text-xs text-slate-500 font-body">
+                      {p.quantity ? `${Number(p.quantity).toLocaleString()} ${p.unit || ''}` : p.unit || ''}
+                    </p>
+                  )}
+                </div>
+                {p.notes && (
+                  <p className="text-xs text-slate-400 font-body max-w-[200px] text-right">{p.notes}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="bg-white rounded-xl border border-agri-200 shadow-card overflow-hidden">

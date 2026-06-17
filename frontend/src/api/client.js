@@ -17,25 +17,6 @@ import Cookies from 'js-cookie'
 // Use relative API base URL to leverage Nginx reverse proxy
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
-/**
- * Decode base64 JWT payload to check expiry.
- */
-function parseJwt(token) {
-  try {
-    const base64Url = token.split('.')[1]
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-    const jsonPayload = decodeURIComponent(
-      window.atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    )
-    return JSON.parse(jsonPayload)
-  } catch (e) {
-    return null
-  }
-}
-
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -48,60 +29,14 @@ const apiClient = axios.create({
 // Attach JWT access token + CSRF token on every request
 
 apiClient.interceptors.request.use(
-  async (config) => {
-    let { accessToken, logout, setAccessToken } = useAuthStore.getState()
+  (config) => {
+    const { accessToken } = useAuthStore.getState()
 
-    // Proactive silent refresh: if token is near expiry (< 30s), refresh first (Task 18)
-    if (accessToken) {
-      const payload = parseJwt(accessToken)
-      if (payload && payload.exp) {
-        const isNearExpiry = (payload.exp * 1000) - Date.now() < 30000 // 30s buffer
-        if (isNearExpiry) {
-          // If a refresh is already in progress, wait for it
-          if (isRefreshing) {
-            try {
-              const newToken = await new Promise((resolve, reject) => {
-                failedQueue.push({ resolve, reject })
-              })
-              accessToken = newToken
-              config.headers.Authorization = `Bearer ${newToken}`
-              return config
-            } catch {
-              accessToken = null
-              logout()
-              return config
-            }
-          }
-
-          isRefreshing = true
-          try {
-            const csrfToken = Cookies.get('csrf_token')
-            const res = await axios.post(`${API_BASE_URL}/auth/refresh`, null, {
-              withCredentials: true,
-              headers: {
-                ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
-              },
-            })
-            accessToken = res.data.access_token
-            setAccessToken(accessToken)
-            processQueue(null, accessToken)
-          } catch (err) {
-            processQueue(err, null)
-            logout()
-            return Promise.reject(err)
-          } finally {
-            isRefreshing = false
-          }
-        }
-      }
-    }
-
-    // Attach access token from in-memory store
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`
     }
 
-    // Attach CSRF token for non-GET requests (double-submit pattern) using js-cookie (Task 18)
+    // Attach CSRF token for non-GET requests (double-submit pattern)
     const method = (config.method || '').toUpperCase()
     if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
       const csrfToken = Cookies.get('csrf_token')

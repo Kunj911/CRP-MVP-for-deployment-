@@ -46,9 +46,14 @@ export default function OrderCard({ order }) {
 
       <p className="text-sm text-slate-700 mb-1 font-body truncate">
         <span className="font-medium">{order.commodity_name ?? 'Commodity'}</span>
-        {order.quantity_kg && (
+        {order.quantity_kg ? (
           <span className="text-slate-400 ml-1 font-data text-xs">
             · {order.quantity_kg.toLocaleString()} kg
+          </span>
+        ) : null}
+        {order.product_count > 1 && (
+          <span className="text-forest-700 ml-1.5 font-data text-xs font-medium">
+            · {order.product_count} Products
           </span>
         )}
       </p>

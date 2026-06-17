@@ -18,7 +18,7 @@ Schema naming convention:
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 from enum import Enum
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -55,13 +55,52 @@ VALID_TRANSITIONS: dict[ShipmentStatus, list[ShipmentStatus]] = {
 }
 
 
+# ── Order Product schemas ─────────────────────────────────────────────────────
+
+class ProductCreate(BaseModel):
+    product_name: str = Field(..., min_length=1, max_length=200)
+    quantity: Optional[Decimal] = Field(None, gt=0, decimal_places=2)
+    unit: Optional[str] = Field(None, max_length=20)
+    notes: Optional[str] = Field(None, max_length=2000)
+
+    @field_validator("product_name")
+    @classmethod
+    def strip_product_name(cls, v: str) -> str:
+        return v.strip()
+
+
+class ProductUpdate(BaseModel):
+    id: Optional[int] = None
+    product_name: Optional[str] = Field(None, min_length=1, max_length=200)
+    quantity: Optional[Decimal] = Field(None, gt=0, decimal_places=2)
+    unit: Optional[str] = Field(None, max_length=20)
+    notes: Optional[str] = Field(None, max_length=2000)
+
+    @field_validator("product_name")
+    @classmethod
+    def strip_product_name(cls, v: str) -> str:
+        return v.strip() if v else v
+
+
+class ProductResponse(BaseModel):
+    id: int
+    product_name: str
+    quantity: Optional[Decimal]
+    unit: Optional[str]
+    notes: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 # ── Request schemas ───────────────────────────────────────────────────────────
 
 class OrderCreate(BaseModel):
     """Body for POST /api/v1/orders"""
 
     customer_id: int = Field(..., gt=0, description="ID of the customer (buyer)")
-    product_name: str = Field(..., min_length=1, max_length=200)
+    product_name: Optional[str] = Field(None, min_length=1, max_length=200)
     quantity: Optional[Decimal] = Field(
         None, gt=0, decimal_places=2, description="Quantity (e.g. 500.00)"
     )
@@ -71,11 +110,21 @@ class OrderCreate(BaseModel):
     expected_dispatch_date: Optional[date] = None
     expected_delivery_date: Optional[date] = None
     notes: Optional[str] = Field(None, max_length=2000)
+    products: List[ProductCreate] = Field(
+        default=[], description="Multi-product support"
+    )
 
-    @field_validator("product_name")
-    @classmethod
-    def strip_product_name(cls, v: str) -> str:
-        return v.strip()
+    @model_validator(mode="after")
+    def validate_products(self) -> "OrderCreate":
+        if not self.product_name and not self.products:
+            raise ValueError(
+                "Either product_name or products must be provided"
+            )
+        if self.products:
+            for p in self.products:
+                if not p.product_name.strip():
+                    raise ValueError("Product name cannot be empty")
+        return self
 
     @model_validator(mode="after")
     def validate_dates(self) -> "OrderCreate":
@@ -96,6 +145,10 @@ class OrderCreate(BaseModel):
                 "product_name": "Turmeric Finger Grade A",
                 "quantity": 500.00,
                 "unit": "MT",
+                "products": [
+                    {"product_name": "Turmeric Powder", "quantity": 500, "unit": "KG"},
+                    {"product_name": "Black Pepper", "quantity": 200, "unit": "KG"},
+                ],
                 "expected_dispatch_date": "2026-06-10",
                 "expected_delivery_date": "2026-07-05",
                 "notes": "Handle with care — humidity-sensitive cargo.",
@@ -116,10 +169,13 @@ class OrderUpdate(BaseModel):
     expected_dispatch_date: Optional[date] = None
     expected_delivery_date: Optional[date] = None
     notes: Optional[str] = Field(None, max_length=2000)
+    products: Optional[List[ProductUpdate]] = Field(
+        None, description="Replace all products with this list"
+    )
 
     @model_validator(mode="after")
     def at_least_one_field(self) -> "OrderUpdate":
-        if all(v is None for v in self.model_dump().values()):
+        if all(v is None for v in self.model_dump()):
             raise ValueError("At least one field must be provided for update")
         return self
 
@@ -172,6 +228,7 @@ class OrderListItem(BaseModel):
     product_name: str
     quantity: Optional[Decimal]
     unit: Optional[str]
+    product_count: int = 0
     shipment_status: ShipmentStatus
     expected_dispatch_date: Optional[date]
     expected_delivery_date: Optional[date]
@@ -198,6 +255,7 @@ class OrderResponse(BaseModel):
     created_by: Optional[int]
     created_at: datetime
     updated_at: datetime
+    products: List[ProductResponse] = []
 
     model_config = {"from_attributes": True}
 
@@ -228,17 +286,27 @@ class OrderFilters(BaseModel):
 
 
 class OrderCreateFields(BaseModel):
-    product_name: str = Field(..., min_length=1, max_length=200)
+    product_name: Optional[str] = Field(None, min_length=1, max_length=200)
     quantity: Optional[Decimal] = Field(None, gt=0, decimal_places=2)
     unit: Optional[str] = Field(None, max_length=20)
     expected_dispatch_date: Optional[date] = None
     expected_delivery_date: Optional[date] = None
     notes: Optional[str] = Field(None, max_length=2000)
+    products: List[ProductCreate] = Field(
+        default=[], description="Multi-product support"
+    )
 
-    @field_validator("product_name")
-    @classmethod
-    def strip_product_name(cls, v: str) -> str:
-        return v.strip()
+    @model_validator(mode="after")
+    def validate_products(self) -> "OrderCreateFields":
+        if not self.product_name and not self.products:
+            raise ValueError(
+                "Either product_name or products must be provided"
+            )
+        if self.products:
+            for p in self.products:
+                if not p.product_name.strip():
+                    raise ValueError("Product name cannot be empty")
+        return self
 
     @model_validator(mode="after")
     def validate_dates(self) -> "OrderCreateFields":

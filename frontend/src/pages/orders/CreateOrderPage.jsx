@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Save, UserPlus, Users, Check, Search, X } from 'lucide-react'
+import { ArrowLeft, Save, UserPlus, Users, Check, Search, X, Plus, Trash2 } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import { toast } from 'sonner'
 import { ordersApi, customersApi } from '../../api'
+
+const EMPTY_PRODUCT = { product_name: '', quantity: '', unit: 'MT', notes: '' }
 
 export default function CreateOrderPage() {
   const navigate = useNavigate()
@@ -28,6 +30,7 @@ export default function CreateOrderPage() {
     expected_delivery_date: '',
     notes: ''
   })
+  const [existingProducts, setExistingProducts] = useState([{ ...EMPTY_PRODUCT }])
 
   const [newBuyerForm, setNewBuyerForm] = useState({
     // Customer Info
@@ -46,6 +49,7 @@ export default function CreateOrderPage() {
     expected_delivery_date: '',
     notes: ''
   })
+  const [newProducts, setNewProducts] = useState([{ ...EMPTY_PRODUCT }])
 
   // Load customers for selection when in existing mode
   useEffect(() => {
@@ -94,6 +98,29 @@ export default function CreateOrderPage() {
     setSearchTerm('')
   }
 
+  // Dynamic product row handlers
+  const handleProductChange = (setter, index, field, value) => {
+    setter(prev => prev.map((p, i) => i === index ? { ...p, [field]: value } : p))
+  }
+
+  const handleAddProduct = (setter) => {
+    setter(prev => [...prev, { ...EMPTY_PRODUCT }])
+  }
+
+  const handleRemoveProduct = (setter, index) => {
+    setter(prev => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev)
+  }
+
+  const productsToPayload = (products) =>
+    products
+      .filter(p => p.product_name.trim())
+      .map(p => ({
+        product_name: p.product_name.trim(),
+        quantity: p.quantity ? Number(p.quantity) : null,
+        unit: p.unit || null,
+        notes: p.notes?.trim() || null,
+      }))
+
   // Submissions
   const handleExistingSubmit = async (e) => {
     e.preventDefault()
@@ -114,14 +141,16 @@ export default function CreateOrderPage() {
 
     setLoading(true)
     try {
+      const productList = productsToPayload(existingProducts)
       const payload = {
         customer_id: Number(existingBuyerForm.customer_id),
-        product_name: existingBuyerForm.product_name,
+        product_name: existingBuyerForm.product_name || (productList[0]?.product_name || ''),
         quantity: existingBuyerForm.quantity ? Number(existingBuyerForm.quantity) : null,
         unit: existingBuyerForm.unit,
         expected_dispatch_date: existingBuyerForm.expected_dispatch_date || null,
         expected_delivery_date: existingBuyerForm.expected_delivery_date || null,
-        notes: existingBuyerForm.notes || null
+        notes: existingBuyerForm.notes || null,
+        products: productList,
       }
       await ordersApi.create(payload)
       toast.success('Order created successfully')
@@ -156,6 +185,7 @@ export default function CreateOrderPage() {
 
     setLoading(true)
     try {
+      const productList = productsToPayload(newProducts)
       const payload = {
         customer: {
           company_name: newBuyerForm.company_name,
@@ -167,12 +197,13 @@ export default function CreateOrderPage() {
           notes: newBuyerForm.customer_notes || null
         },
         order: {
-          product_name: newBuyerForm.product_name,
+          product_name: newBuyerForm.product_name || (productList[0]?.product_name || ''),
           quantity: newBuyerForm.quantity ? Number(newBuyerForm.quantity) : null,
           unit: newBuyerForm.unit,
           expected_dispatch_date: newBuyerForm.expected_dispatch_date || null,
           expected_delivery_date: newBuyerForm.expected_delivery_date || null,
-          notes: newBuyerForm.notes || null
+          notes: newBuyerForm.notes || null,
+          products: productList,
         }
       }
       await ordersApi.createWithNewCustomer(payload)
@@ -348,16 +379,73 @@ export default function CreateOrderPage() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <label className="block text-xs font-medium text-slate-700 mb-1.5">Commodity / Product Name *</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">Commodity / Product Name</label>
                 <input
                   type="text"
                   name="product_name"
                   value={existingBuyerForm.product_name}
                   onChange={handleExistingChange}
-                  required
-                  placeholder="e.g. Turmeric Finger Grade A, Whole Black Pepper"
+                  placeholder="e.g. Mixed spices (or add products below)"
                   className="w-full px-3 py-2.5 bg-white border border-agri-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 outline-none focus:ring-2 focus:ring-forest-500 font-body"
                 />
+              </div>
+
+              {/* Multi-product rows */}
+              <div className="md:col-span-2 border-t border-agri-100 pt-4">
+                <label className="block text-xs font-medium text-slate-700 mb-2">Products (optional — add multiple for multi-product orders)</label>
+                {existingProducts.map((product, index) => (
+                  <div key={index} className="flex items-start gap-2 mb-2 p-3 bg-agri-50 rounded-lg border border-agri-200">
+                    <div className="flex-1 grid grid-cols-4 gap-2">
+                      <div className="col-span-2">
+                        <input
+                          type="text"
+                          value={product.product_name}
+                          onChange={(e) => handleProductChange(setExistingProducts, index, 'product_name', e.target.value)}
+                          placeholder="Product name"
+                          className="w-full px-2.5 py-2 bg-white border border-agri-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-forest-500 font-body"
+                        />
+                      </div>
+                      <div>
+                        <input
+                          type="number"
+                          value={product.quantity}
+                          onChange={(e) => handleProductChange(setExistingProducts, index, 'quantity', e.target.value)}
+                          min="0.01"
+                          step="0.01"
+                          placeholder="Qty"
+                          className="w-full px-2.5 py-2 bg-white border border-agri-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-forest-500 font-body"
+                        />
+                      </div>
+                      <div className="flex gap-1">
+                        <select
+                          value={product.unit}
+                          onChange={(e) => handleProductChange(setExistingProducts, index, 'unit', e.target.value)}
+                          className="flex-1 px-2 py-2 bg-white border border-agri-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-forest-500 font-body"
+                        >
+                          <option value="MT">MT</option>
+                          <option value="kg">kg</option>
+                          <option value="bags">bags</option>
+                          <option value="containers">containers</option>
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveProduct(setExistingProducts, index)}
+                          className="p-2 text-slate-400 hover:text-red-600 transition-colors"
+                          title="Remove product"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => handleAddProduct(setExistingProducts)}
+                  className="flex items-center gap-1.5 text-xs text-forest-700 hover:text-forest-800 font-medium transition-colors"
+                >
+                  <Plus size={14} /> Add Product
+                </button>
               </div>
 
               <div>
@@ -572,16 +660,73 @@ export default function CreateOrderPage() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <label className="block text-xs font-medium text-slate-700 mb-1.5">Commodity / Product Name *</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">Commodity / Product Name</label>
                 <input
                   type="text"
                   name="product_name"
                   value={newBuyerForm.product_name}
                   onChange={handleNewChange}
-                  required
-                  placeholder="e.g. Turmeric Finger Grade A, Whole Black Pepper"
+                  placeholder="e.g. Mixed spices (or add products below)"
                   className="w-full px-3 py-2.5 bg-white border border-agri-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 outline-none focus:ring-2 focus:ring-forest-500 font-body"
                 />
+              </div>
+
+              {/* Multi-product rows */}
+              <div className="md:col-span-2 border-t border-agri-100 pt-4">
+                <label className="block text-xs font-medium text-slate-700 mb-2">Products (optional — add multiple for multi-product orders)</label>
+                {newProducts.map((product, index) => (
+                  <div key={index} className="flex items-start gap-2 mb-2 p-3 bg-agri-50 rounded-lg border border-agri-200">
+                    <div className="flex-1 grid grid-cols-4 gap-2">
+                      <div className="col-span-2">
+                        <input
+                          type="text"
+                          value={product.product_name}
+                          onChange={(e) => handleProductChange(setNewProducts, index, 'product_name', e.target.value)}
+                          placeholder="Product name"
+                          className="w-full px-2.5 py-2 bg-white border border-agri-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-forest-500 font-body"
+                        />
+                      </div>
+                      <div>
+                        <input
+                          type="number"
+                          value={product.quantity}
+                          onChange={(e) => handleProductChange(setNewProducts, index, 'quantity', e.target.value)}
+                          min="0.01"
+                          step="0.01"
+                          placeholder="Qty"
+                          className="w-full px-2.5 py-2 bg-white border border-agri-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-forest-500 font-body"
+                        />
+                      </div>
+                      <div className="flex gap-1">
+                        <select
+                          value={product.unit}
+                          onChange={(e) => handleProductChange(setNewProducts, index, 'unit', e.target.value)}
+                          className="flex-1 px-2 py-2 bg-white border border-agri-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-forest-500 font-body"
+                        >
+                          <option value="MT">MT</option>
+                          <option value="kg">kg</option>
+                          <option value="bags">bags</option>
+                          <option value="containers">containers</option>
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveProduct(setNewProducts, index)}
+                          className="p-2 text-slate-400 hover:text-red-600 transition-colors"
+                          title="Remove product"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => handleAddProduct(setNewProducts)}
+                  className="flex items-center gap-1.5 text-xs text-forest-700 hover:text-forest-800 font-medium transition-colors"
+                >
+                  <Plus size={14} /> Add Product
+                </button>
               </div>
 
               <div>

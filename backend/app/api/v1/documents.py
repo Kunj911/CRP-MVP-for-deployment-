@@ -25,6 +25,74 @@ class RejectionRequest(BaseModel):
     remarks: str = Field(..., min_length=1, description="Reason for rejection")
 
 
+# ── GET /documents/vault — list all documents with order info (single query, no N+1) ──
+
+@router.get(
+    "/documents/vault",
+    summary="List all documents with order info for the document vault",
+)
+def list_document_vault(
+    current_user: CurrentUser,
+    db: DbSession,
+):
+    """Return all non-deleted documents joined with order metadata in one query."""
+    from app.models.document import Document
+    from app.models.order import Order
+    from app.core.exceptions import NotFoundException
+    
+    query = (
+        db.query(
+            Document.id,
+            Document.order_id,
+            Order.order_code,
+            Order.company_name,
+            Order.product_name,
+            Document.document_type,
+            Document.file_name,
+            Document.file_url,
+            Document.file_size,
+            Document.status,
+            Document.visibility,
+            Document.uploaded_by,
+            Document.uploaded_at,
+            Document.reviewed_by,
+            Document.reviewed_at,
+        )
+        .join(Order, Document.order_id == Order.id)
+        .filter(Document.is_deleted == False)
+    )
+
+    if current_user.role == "CUSTOMER":
+        query = query.filter(
+            Document.status == "approved",
+            Document.visibility == "customer_visible",
+        )
+
+    rows = query.all()
+
+    result = []
+    for r in rows:
+        result.append({
+            "id": r.id,
+            "order_id": r.order_id,
+            "order_code": r.order_code,
+            "customer_name": r.company_name or "N/A",
+            "commodity_name": r.product_name or "N/A",
+            "document_type": r.document_type,
+            "file_name": r.file_name,
+            "file_url": r.file_url,
+            "file_size": r.file_size,
+            "status": r.status,
+            "visibility": r.visibility,
+            "uploaded_by": r.uploaded_by,
+            "uploaded_at": r.uploaded_at.isoformat() if r.uploaded_at else None,
+            "reviewed_by": r.reviewed_by,
+            "reviewed_at": r.reviewed_at.isoformat() if r.reviewed_at else None,
+        })
+
+    return {"data": result}
+
+
 # ── GET /documents/{doc_id} ───────────────────────────────────────────────────
 
 @router.get(

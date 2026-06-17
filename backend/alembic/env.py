@@ -26,6 +26,7 @@ from app.models import (
     notification,
     order_document_requirement,
     order_event,
+    order_product,
     events
 )
 

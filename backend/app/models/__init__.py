@@ -20,6 +20,7 @@ from app.models.document import Document          # FK → Order, User
 from app.models.notification import Notification  # FK → Order, User
 from app.models.order_document_requirement import OrderDocumentRequirement # FK → Order, Document, User
 from app.models.order_event import OrderEvent         # FK → Order
+from app.models.order_product import OrderProduct     # FK → Order
 from app.models.audit_log import AuditLog         # FK → Order, User
 from app.models.login_session import LoginSession # FK → User
 
@@ -36,6 +37,7 @@ __all__ = [
     "Notification",
     "OrderDocumentRequirement",
     "OrderEvent",
+    "OrderProduct",
     "AuditLog",
     "LoginSession",
 ]

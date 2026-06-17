@@ -22,6 +22,7 @@ const STATUS_PROGRESS = {
 
 function normalizeOrder(order) {
   const status = order.status || order.shipment_status
+  const productCount = order.product_count ?? 0
   return {
     id: order.id,
     order_code: order.order_code,
@@ -33,6 +34,7 @@ function normalizeOrder(order) {
     overall_progress: order.overall_progress ?? STATUS_PROGRESS[status] ?? 0,
     active_stage: order.active_stage || (status === 'DELIVERED' ? null : status),
     created_at: order.created_at,
+    product_count: productCount,
   }
 }
 
