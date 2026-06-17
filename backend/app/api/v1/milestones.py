@@ -232,15 +232,21 @@ def mark_stage_complete(
     current_user: WarehouseUser,
     db: DbSession,
 ) -> SuccessResponse[MilestoneResponse]:
-    milestone = milestone_service.complete_current_stage(
-        order_id=order_id,
-        current_user=current_user,
-        db=db,
-    )
-    return SuccessResponse(
-        data=milestone,
-        message=f"Stage '{milestone.stage_name.value}' completed successfully",
-    )
+    logger.info("complete-stage: order_id=%s user_id=%s role=%s", order_id, current_user.id, current_user.role)
+    try:
+        milestone = milestone_service.complete_current_stage(
+            order_id=order_id,
+            current_user=current_user,
+            db=db,
+        )
+        logger.info("complete-stage OK: order_id=%s milestone_id=%s", order_id, milestone.id)
+        return SuccessResponse(
+            data=milestone,
+            message=f"Stage '{milestone.stage_name.value}' completed successfully",
+        )
+    except Exception:
+        logger.exception("complete-stage FAILED: order_id=%s", order_id)
+        raise
 
 
 # ── Customer scoping helper ───────────────────────────────────────────────────
