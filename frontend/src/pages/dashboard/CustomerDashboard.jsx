@@ -186,7 +186,7 @@ export default function CustomerDashboard() {
                 <span className="text-xs text-slate-400 font-body">Loading timeline...</span>
               </div>
             ) : (
-              <MilestoneTimeline milestones={milestones} />
+              <MilestoneTimeline milestones={milestones} orderId={activeOrder.id} onStageComplete={() => fetchDashboardStats(false)} />
             )}
           </div>
         </section>
