@@ -86,9 +86,9 @@ apiClient.interceptors.request.use(
             setAccessToken(accessToken)
             processQueue(null, accessToken)
           } catch (err) {
-            accessToken = null
             processQueue(err, null)
             logout()
+            return Promise.reject(err)
           } finally {
             isRefreshing = false
           }
@@ -119,6 +119,7 @@ apiClient.interceptors.request.use(
 // Handle 401 with silent refresh, normalize all errors
 
 let isRefreshing = false
+let isLoggingOut = false
 let failedQueue = []
 
 function processQueue(error, token = null) {
@@ -139,10 +140,14 @@ apiClient.interceptors.response.use(
 
     // ── 401: Attempt silent token refresh ──────────────────────────────────
     if (error.response?.status === 401 && !originalRequest._retry) {
-      // Don't retry refresh or login requests themselves
+      // Don't retry refresh, login, or logout requests themselves
       if (originalRequest.url?.includes('/auth/refresh') ||
           originalRequest.url?.includes('/auth/login')) {
         useAuthStore.getState().logout()
+        return Promise.reject(error)
+      }
+      // Logout endpoint: user is already being logged out, just surface the error
+      if (originalRequest.url?.includes('/auth/logout')) {
         return Promise.reject(error)
       }
 
