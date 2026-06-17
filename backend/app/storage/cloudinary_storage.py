@@ -68,7 +68,6 @@ class CloudinaryStorage(StorageBackend):
 
         if resource_type == "image":
             upload_kwargs.update({
-                "format": "auto",
                 "quality": "auto:best",
                 "fetch_format": "auto",
             })
