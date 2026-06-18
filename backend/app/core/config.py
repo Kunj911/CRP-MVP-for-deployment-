@@ -150,9 +150,13 @@ class Settings(BaseSettings):
     SMTP_FROM_NAME: str = ""
     SMTP_USE_TLS: bool = True
 
+    # ── Brevo API ─────────────────────────────────────────────────────────────
+    BREVO_API_KEY: str = ""
+    BREVO_API_URL: str = "https://api.brevo.com/v3/smtp/email"
+
     # ── Legacy Email & WhatsApp Notifications (Compatibility) ──────────────────
     EMAIL_ENABLED: bool = True
-    EMAIL_PROVIDER: Literal["resend", "smtp", "sendgrid"] = "smtp"
+    EMAIL_PROVIDER: Literal["resend", "smtp", "sendgrid", "brevo"] = "brevo"
     EMAIL_FROM: str = ""
     EMAIL_FROM_NAME: str = ""
     RESEND_API_KEY: str = ""
@@ -273,6 +277,9 @@ class Settings(BaseSettings):
 
         if self.EMAIL_PROVIDER.lower() == "smtp":
             object.__setattr__(self, "EMAIL_ENABLED", self.SMTP_ENABLED)
+        elif self.EMAIL_PROVIDER.lower() == "brevo":
+            if not self.BREVO_API_KEY:
+                _config_logger.warning("BREVO_API_KEY is not set — email will fail")
 
         return self
 

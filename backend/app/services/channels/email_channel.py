@@ -46,6 +46,9 @@ def send_email(
     if provider == "sendgrid":
         return _send_via_sendgrid(to_address, subject, body_text, body_html)
 
+    if provider == "brevo":
+        return _send_via_brevo(to_address, subject, body_text, body_html)
+
     return _send_via_smtp(to_address, subject, body_text, body_html)
 
 
@@ -189,3 +192,60 @@ def _send_via_sendgrid(
     except Exception as exc:
         logger.error("SendGrid error sending email to %s: %s", to_address, exc)
         return False
+
+
+def _send_via_brevo(
+    to_address: str,
+    subject: str,
+    body_text: str,
+    body_html: Optional[str],
+) -> bool:
+    """Send via Brevo Transactional Email API (HTTPS — port 443)."""
+    if not settings.BREVO_API_KEY:
+        logger.warning("BREVO_API_KEY not set — skipping email to %s", to_address)
+        return False
+
+    try:
+        import httpx
+    except ImportError:
+        logger.error("httpx package is required for Brevo email delivery")
+        return False
+
+    payload = {
+        "sender": {
+            "name": settings.SMTP_FROM_NAME or "Fittree International LLP",
+            "email": settings.SMTP_FROM_EMAIL or "noreply@fittree.com",
+        },
+        "to": [{"email": to_address}],
+        "subject": subject,
+        "textContent": body_text,
+    }
+    if body_html:
+        payload["htmlContent"] = body_html
+
+    try:
+        response = httpx.post(
+            settings.BREVO_API_URL,
+            headers={
+                "api-key": settings.BREVO_API_KEY,
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            json=payload,
+            timeout=15,
+        )
+    except httpx.HTTPError as exc:
+        logger.error("Brevo HTTP error sending email to %s: %s", to_address, exc)
+        return False
+
+    if response.status_code in (200, 201, 202):
+        logger.info("Email accepted by Brevo for %s | subject=%s", to_address, subject)
+        return True
+
+    logger.error(
+        "Brevo email failed for %s | status=%s | body=%s",
+        to_address,
+        response.status_code,
+        response.text[:500],
+    )
+    return False
