@@ -90,23 +90,6 @@ def create_customer(
 
 
 @router.get(
-    "/{customer_id}",
-    response_model=SuccessResponse[CustomerResponse],
-    summary="Get customer by ID",
-    description="Returns a single customer profile by ID. Accessible to staff users only.",
-)
-def get_customer(
-    customer_id: int,
-    current_user: StaffUser,
-    db: DbSession,
-) -> SuccessResponse[CustomerResponse]:
-    customer = db.query(Customer).filter(Customer.id == customer_id).first()
-    if not customer:
-        raise NotFoundException("Customer", customer_id)
-    return SuccessResponse(data=CustomerResponse.model_validate(customer))
-
-
-@router.get(
     "/active",
     summary="List all customers with their active orders",
     description="Returns all customers with their active (non-delivered, non-cancelled) orders. Accessible to staff users only.",
@@ -136,6 +119,21 @@ def list_active_customers(
                 login_email = u.email
                 break
 
+        summary_orders = []
+        for o in active_orders:
+            try:
+                summary_orders.append(ActiveOrderSummary(
+                    id=o.id,
+                    order_code=o.order_code,
+                    product_name=o.product_name,
+                    quantity=float(o.quantity) if o.quantity is not None else None,
+                    unit=o.unit,
+                    shipment_status=o.shipment_status,
+                ))
+            except Exception as e:
+                logger.error("Failed to build ActiveOrderSummary for order %s: %s", o.id, e)
+                raise
+
         result.append(ActiveCustomerResponse(
             id=c.id,
             company_name=c.company_name,
@@ -145,18 +143,25 @@ def list_active_customers(
             phone=c.phone,
             country=c.country,
             address=c.address,
-            active_orders_count=len(active_orders),
-            active_orders=[
-                ActiveOrderSummary(
-                    id=o.id,
-                    order_code=o.order_code,
-                    product_name=o.product_name,
-                    quantity=o.quantity,
-                    unit=o.unit,
-                    shipment_status=o.shipment_status,
-                )
-                for o in active_orders
-            ],
+            active_orders_count=len(summary_orders),
+            active_orders=summary_orders,
         ))
 
     return result
+
+
+@router.get(
+    "/{customer_id}",
+    response_model=SuccessResponse[CustomerResponse],
+    summary="Get customer by ID",
+    description="Returns a single customer profile by ID. Accessible to staff users only.",
+)
+def get_customer(
+    customer_id: int,
+    current_user: StaffUser,
+    db: DbSession,
+) -> SuccessResponse[CustomerResponse]:
+    customer = db.query(Customer).filter(Customer.id == customer_id).first()
+    if not customer:
+        raise NotFoundException("Customer", customer_id)
+    return SuccessResponse(data=CustomerResponse.model_validate(customer))

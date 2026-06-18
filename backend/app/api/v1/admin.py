@@ -340,6 +340,55 @@ def deactivate_user(
     )
 
 
+@router.post(
+    "/settings/test-email",
+    response_model=SuccessResponse[str],
+    summary="Send a test email to verify email configuration",
+)
+def send_test_email(
+    current_user: SuperAdminUser,
+) -> SuccessResponse[str]:
+    """Send a test email to the current user's email address to verify the email engine is working."""
+    from app.services.channels.email_channel import send_email
+
+    try:
+        success = send_email(
+            to_address=current_user.email,
+            subject="Test Email from Live-Trace",
+            body_text=(
+                f"Hello {current_user.full_name},\n\n"
+                f"This is a test email from Live-Trace by Fittree International LLP.\n"
+                f"If you received this, the email engine is working correctly.\n\n"
+                f"Regards,\nLive-Trace Team"
+            ),
+            body_html=(
+                f"<h2>Test Email</h2>"
+                f"<p>Hello {current_user.full_name},</p>"
+                f"<p>This is a test email from <strong>Live-Trace</strong> by Fittree International LLP.</p>"
+                f"<p>If you received this, the email engine is working correctly.</p>"
+                f"<hr><p style='color:#666;font-size:12px'>Live-Trace by Fittree International LLP</p>"
+            ),
+        )
+        if success:
+            logger.info("Test email sent successfully to %s", current_user.email)
+            return SuccessResponse(
+                data=f"Test email sent to {current_user.email}",
+                message="Email sent successfully. Check your inbox.",
+            )
+        else:
+            logger.error("Test email failed to send to %s", current_user.email)
+            return SuccessResponse(
+                data="Email delivery failed",
+                message="Failed to send email. Check server logs for details.",
+            )
+    except Exception as e:
+        logger.error("Test email exception for %s: %s", current_user.email, e)
+        return SuccessResponse(
+            data=str(e),
+            message="An error occurred while sending the test email.",
+        )
+
+
 def _stage_role(stage_name: str) -> str | None:
     roles = {
         "PROCUREMENT": "WAREHOUSE",

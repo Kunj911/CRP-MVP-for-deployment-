@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Shield, Key, Laptop, Globe, LogOut, Trash2, CheckCircle, AlertTriangle } from 'lucide-react'
+import { Shield, Key, Laptop, Globe, LogOut, Trash2, CheckCircle, AlertTriangle, Mail, Send } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import apiClient from '../../api/client'
 import useAuthStore from '../../store/authStore'
@@ -19,6 +19,26 @@ export default function SettingsPage() {
   const [mfaQrUri, setMfaQrUri] = useState('')
   const [otpCode, setOtpCode] = useState('')
   const [loadingMfa, setLoadingMfa] = useState(false)
+
+  // Test Email
+  const [testingEmail, setTestingEmail] = useState(false)
+  const [emailResult, setEmailResult] = useState(null)
+
+  const handleTestEmail = async () => {
+    try {
+      setTestingEmail(true)
+      setEmailResult(null)
+      const res = await apiClient.post('/settings/test-email')
+      setEmailResult({ ok: true, message: res.data?.message || 'Email sent successfully' })
+      toast.success(res.data?.message || 'Test email sent!')
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to send test email'
+      setEmailResult({ ok: false, message: msg })
+      toast.error(msg)
+    } finally {
+      setTestingEmail(false)
+    }
+  }
 
   // Fetch active sessions
   const fetchSessions = async () => {
@@ -324,6 +344,46 @@ export default function SettingsPage() {
                   </div>
                 )
               })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Email Configuration Card */}
+      <div className="bg-white border border-agri-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="px-6 py-5 border-b border-agri-200 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-forest-50 text-forest-600 rounded-lg">
+              <Mail className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-heading font-semibold text-slate-900">Email Configuration</h2>
+              <p className="text-xs text-slate-500 font-body font-normal">Verify that the email engine is working correctly.</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-6">
+          <div className="flex items-center justify-between gap-4">
+            <div className="text-sm text-slate-600 font-body">
+              Send a test email to <span className="font-semibold text-slate-800">{user?.email || 'your account email'}</span> to verify Brevo SMTP configuration and email deliverability.
+            </div>
+            <Button
+              variant="primary"
+              icon={Send}
+              loading={testingEmail}
+              onClick={handleTestEmail}
+              className="shrink-0"
+            >
+              Send Test Email
+            </Button>
+          </div>
+          {emailResult && (
+            <div className={`mt-4 text-sm font-body px-4 py-3 rounded-lg border ${
+              emailResult.ok
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                : 'bg-red-50 text-red-800 border-red-200'
+            }`}>
+              {emailResult.message}
             </div>
           )}
         </div>

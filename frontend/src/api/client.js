@@ -148,7 +148,14 @@ function _handleApiError(error) {
 
   const status = error.response.status
   const data = error.response.data
-  const message = data?.error?.message || data?.detail || 'Something went wrong.'
+  let message = 'Something went wrong.'
+  if (data?.error?.message) {
+    message = data.error.message
+  } else if (Array.isArray(data?.detail)) {
+    message = data.detail.map((d) => d.msg).join('; ') || 'Validation error'
+  } else if (data?.detail) {
+    message = data.detail
+  }
 
   switch (status) {
     case 401:
