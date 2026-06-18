@@ -125,7 +125,7 @@ class Settings(BaseSettings):
         return self.MAX_DOCUMENT_SIZE_MB * 1024 * 1024
 
     # ── CORS & CSRF ───────────────────────────────────────────────────────────
-    ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000,http://localhost"
+    ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000,http://localhost,https://live-trace-fittree.up.railway.app"
 
     @computed_field
     @property
