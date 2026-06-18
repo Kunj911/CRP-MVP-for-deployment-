@@ -13,6 +13,7 @@ const UploadPage = lazy(() => import('../pages/uploads/UploadPage'))
 const DocumentVaultPage = lazy(() => import('../pages/documents/DocumentVaultPage'))
 const NotificationsPage = lazy(() => import('../pages/notifications/NotificationsPage'))
 const SettingsPage = lazy(() => import('../pages/settings/SettingsPage'))
+const CustomersPage = lazy(() => import('../pages/customers/CustomersPage'))
 
 /* Protected route — redirects to /login if no token */
 function ProtectedRoute() {
@@ -67,6 +68,7 @@ export default function AppRouter() {
                   <UploadPage />
                 </RoleRoute>
               } />
+              <Route path="customers" element={<CustomersPage />} />
               <Route path="documents" element={<DocumentVaultPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
               <Route path="settings" element={<SettingsPage />} />

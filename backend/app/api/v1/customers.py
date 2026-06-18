@@ -1,13 +1,20 @@
 import logging
 from typing import List
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import DbSession, StaffUser, AdminUser
+from app.api.deps import DbSession, StaffUser, AdminUser, SuperAdminUser
 from app.core.exceptions import ConflictException, NotFoundException
 from app.models.customer import Customer
+from app.models.order import Order
+from app.models.user import User
 from app.schemas.common import SuccessResponse
-from app.schemas.customer import CustomerResponse, CustomerOnboard, CustomerListResponse
+from app.schemas.customer import (
+    CustomerResponse,
+    CustomerOnboard,
+    CustomerListResponse,
+    ActiveCustomerResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -34,11 +41,11 @@ def list_customers(
     response_model=SuccessResponse[CustomerResponse],
     status_code=status.HTTP_201_CREATED,
     summary="Create a new customer profile",
-    description="Registers a new buyer company in the system. Requires ADMIN or SUPER_ADMIN role.",
+    description="Registers a new buyer company in the system. Requires SUPER_ADMIN role.",
 )
 def create_customer(
     body: CustomerOnboard,
-    current_user: AdminUser,
+    current_user: SuperAdminUser,
     db: DbSession,
 ) -> SuccessResponse[CustomerResponse]:
     # Check for duplicates by email or company name
@@ -97,3 +104,59 @@ def get_customer(
     if not customer:
         raise NotFoundException("Customer", customer_id)
     return SuccessResponse(data=CustomerResponse.model_validate(customer))
+
+
+@router.get(
+    "/active",
+    summary="List all customers with their active orders",
+    description="Returns all customers with their active (non-delivered, non-cancelled) orders. Accessible to staff users only.",
+)
+def list_active_customers(
+    current_user: StaffUser,
+    db: DbSession,
+) -> List[ActiveCustomerResponse]:
+    customers = (
+        db.query(Customer)
+        .options(joinedload(Customer.orders), joinedload(Customer.users))
+        .order_by(Customer.company_name.asc())
+        .all()
+    )
+
+    result = []
+    for c in customers:
+        active_orders = [
+            o
+            for o in c.orders
+            if o.shipment_status not in ("DELIVERED", "CANCELLED")
+        ]
+
+        login_email = None
+        for u in c.users:
+            if u.role == "CUSTOMER":
+                login_email = u.email
+                break
+
+        result.append(ActiveCustomerResponse(
+            id=c.id,
+            company_name=c.company_name,
+            contact_person=c.contact_person,
+            email=c.email,
+            login_email=login_email,
+            phone=c.phone,
+            country=c.country,
+            address=c.address,
+            active_orders_count=len(active_orders),
+            active_orders=[
+                ActiveOrderSummary(
+                    id=o.id,
+                    order_code=o.order_code,
+                    product_name=o.product_name,
+                    quantity=o.quantity,
+                    unit=o.unit,
+                    shipment_status=o.shipment_status,
+                )
+                for o in active_orders
+            ],
+        ))
+
+    return result

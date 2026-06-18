@@ -1,5 +1,6 @@
 import re
 from datetime import datetime
+from decimal import Decimal
 from typing import Optional, List
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
@@ -26,6 +27,10 @@ class CustomerOnboard(BaseModel):
     country: Optional[str] = Field(None, max_length=100, description="Country of destination / location")
     address: Optional[str] = Field(None, description="Physical address")
     notes: Optional[str] = Field(None, description="Optional onboarding notes")
+    password: Optional[str] = Field(
+        None, min_length=8,
+        description="Custom password for the new customer login. Leave blank for default Welcome@1234"
+    )
 
     @field_validator("company_name")
     @classmethod
@@ -44,6 +49,31 @@ class CustomerOnboard(BaseModel):
         if not re.match(r"^\+?[\d\s\-()]+$", trimmed):
             raise ValueError("Phone number must contain only digits, spaces, dashes, parentheses, or '+'")
         return trimmed
+
+class ActiveOrderSummary(BaseModel):
+    id: int
+    order_code: str
+    product_name: str
+    quantity: Optional[float] = None
+    unit: Optional[str] = None
+    shipment_status: str
+
+
+class ActiveCustomerResponse(BaseModel):
+    id: int
+    company_name: str
+    contact_person: Optional[str] = None
+    email: Optional[str] = None
+    login_email: Optional[str] = None
+    phone: Optional[str] = None
+    country: Optional[str] = None
+    address: Optional[str] = None
+    active_orders_count: int = 0
+    active_orders: List[ActiveOrderSummary] = []
+
+    class Config:
+        from_attributes = True
+
 
 class CustomerListResponse(BaseModel):
     status: str = "success"

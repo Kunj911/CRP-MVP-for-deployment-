@@ -640,15 +640,14 @@ def create_order_with_new_customer(
     data: OrderWithNewCustomerCreate,
     current_user: User,
     db: Session,
-) -> Order:
+) -> dict:
     """
     Onboard a new customer and create their first order in a single transaction.
 
-    - Validates permissions (ADMIN/SUPER_ADMIN only)
     - Validates email format/uniqueness across both customers & users
     - Validates company name uniqueness to prevent duplicates
     - Creates Customer record
-    - Creates associated CUSTOMER user record with secure default password
+    - Creates associated CUSTOMER user record with password (custom or default)
     - Generates unique order_code
     - Creates Order record linked to the newly created customer
     - Initializes the 9-stage tracking pipeline milestones
@@ -656,8 +655,6 @@ def create_order_with_new_customer(
     - Triggers notifications (welcome email & order-created alert)
     - Safely rolls back all operations in case of database exception
     """
-    _assert_can_write(current_user)
-
     # 1. Pre-validation checks
     email_clean = data.customer.email.strip().lower()
     company_clean = data.customer.company_name.strip()
@@ -691,8 +688,8 @@ def create_order_with_new_customer(
         db.flush()  # Generate customer.id
 
         # 3. Create User
-        # Default password is "Welcome@1234"
-        pwd_hash = hash_password("Welcome@1234")
+        plain_password = (data.customer.password or "Welcome@1234")
+        pwd_hash = hash_password(plain_password)
         user = User(
             full_name=data.customer.contact_person or company_clean,
             email=email_clean,
@@ -793,7 +790,7 @@ def create_order_with_new_customer(
     except Exception as n_exc:
         logger.error("Failed to send post-onboarding notifications: %s", n_exc)
 
-    return order
+    return {"order": order, "password": plain_password}
 
 
 # ── Dashboard aggregation helpers ──────────────────────────────────────────────

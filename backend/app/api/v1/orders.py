@@ -30,7 +30,7 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import CurrentUser, DbSession
+from app.api.deps import CurrentUser, DbSession, SuperAdminUser
 from app.schemas.common import PaginatedResponse, SuccessResponse
 from app.schemas.order import (
     OrderCreate,
@@ -136,28 +136,33 @@ def create_order(
 
 @router.post(
     "/with-new-customer",
-    response_model=SuccessResponse[OrderResponse],
     status_code=201,
     summary="Create an order with a new customer",
     description=(
         "Onboards a new customer profile and maps their first order within a single transaction. "
-        "Requires ADMIN or SUPER_ADMIN role."
+        "Requires SUPER_ADMIN role."
     ),
 )
 def create_order_with_new_customer(
     body: OrderWithNewCustomerCreate,
-    current_user: CurrentUser,
+    current_user: SuperAdminUser,
     db: DbSession,
-) -> SuccessResponse[OrderResponse]:
-    order = order_service.create_order_with_new_customer(
+) -> dict:
+    result = order_service.create_order_with_new_customer(
         data=body,
         current_user=current_user,
         db=db,
     )
-    return SuccessResponse(
-        data=OrderResponse.model_validate(order),
-        message=f"Order '{order.order_code}' for new customer created successfully",
-    )
+    order = result["order"]
+    password = result["password"]
+    return {
+        "status": "success",
+        "data": {
+            "order": OrderResponse.model_validate(order).model_dump(),
+            "customer_password": password,
+        },
+        "message": f"Order '{order.order_code}' for new customer created successfully",
+    }
 
 
 # ── GET /orders/client-dashboard ──────────────────────────────────────────────

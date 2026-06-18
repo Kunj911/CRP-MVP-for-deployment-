@@ -1,23 +1,24 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Package, Upload, FileText,
-  Bell, Settings, LogOut
+  Bell, Settings, LogOut, Users
 } from 'lucide-react'
 import useAuthStore from '../../store/authStore'
 import { toast } from 'sonner'
 
 const ROLE_NAV = {
-  SUPER_ADMIN:   ['dashboard','orders','uploads','documents','notifications','settings'],
-  ADMIN:         ['dashboard','orders','uploads','documents','notifications','settings'],
-  WAREHOUSE:     ['dashboard','orders','uploads','documents','notifications','settings'],
-  QA:            ['dashboard','orders','uploads','documents','notifications','settings'],
-  DOCUMENTATION: ['dashboard','orders','uploads','documents','notifications','settings'],
+  SUPER_ADMIN:   ['dashboard','orders','customers','uploads','documents','notifications','settings'],
+  ADMIN:         ['dashboard','orders','customers','uploads','documents','notifications','settings'],
+  WAREHOUSE:     ['dashboard','orders','customers','uploads','documents','notifications','settings'],
+  QA:            ['dashboard','orders','customers','uploads','documents','notifications','settings'],
+  DOCUMENTATION: ['dashboard','orders','customers','uploads','documents','notifications','settings'],
   CUSTOMER:      ['dashboard','orders','documents','notifications','settings'],
 }
 
 const NAV_ITEMS = [
   { key: 'dashboard',     label: 'Dashboard',  icon: LayoutDashboard, to: '/' },
   { key: 'orders',        label: 'Orders',      icon: Package,         to: '/orders' },
+  { key: 'customers',     label: 'Customers',   icon: Users,           to: '/customers' },
   { key: 'uploads',       label: 'Uploads',     icon: Upload,          to: '/uploads' },
   { key: 'documents',     label: 'Documents',   icon: FileText,        to: '/documents' },
   { key: 'notifications', label: 'Alerts',      icon: Bell,            to: '/notifications' },

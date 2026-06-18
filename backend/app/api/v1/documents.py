@@ -38,6 +38,7 @@ def list_document_vault(
     """Return all non-deleted documents joined with order metadata in one query."""
     from app.models.document import Document
     from app.models.order import Order
+    from app.models.customer import Customer
     from app.core.exceptions import NotFoundException
     
     query = (
@@ -45,7 +46,7 @@ def list_document_vault(
             Document.id,
             Document.order_id,
             Order.order_code,
-            Order.company_name,
+            Customer.company_name,
             Order.product_name,
             Document.document_type,
             Document.file_name,
@@ -59,6 +60,7 @@ def list_document_vault(
             Document.reviewed_at,
         )
         .join(Order, Document.order_id == Order.id)
+        .join(Customer, Order.customer_id == Customer.id)
         .filter(Document.is_deleted == False)
     )
 

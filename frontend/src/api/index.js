@@ -123,4 +123,5 @@ export const customersApi = {
   list: (params) => apiClient.get('/customers', { params }),
   create: (data) => apiClient.post('/customers', data),
   getById: (id) => apiClient.get(`/customers/${id}`),
+  getActive: () => apiClient.get('/customers/active'),
 }

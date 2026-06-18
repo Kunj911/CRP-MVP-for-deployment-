@@ -1,15 +1,17 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Save, UserPlus, Users, Check, Search, X, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Save, UserPlus, Users, Check, Search, X, Plus, Trash2, Eye, EyeOff } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import { toast } from 'sonner'
 import { ordersApi, customersApi } from '../../api'
+import useAuthStore from '../../store/authStore'
 
 const EMPTY_PRODUCT = { product_name: '', quantity: '', unit: 'MT', notes: '' }
 
 export default function CreateOrderPage() {
   const navigate = useNavigate()
   const dropdownRef = useRef(null)
+  const role = useAuthStore((s) => s.user?.role)
   
   const [workflowMode, setWorkflowMode] = useState(null) // 'existing' | 'new' | null
   const [loading, setLoading] = useState(false)
@@ -41,6 +43,8 @@ export default function CreateOrderPage() {
     country: '',
     address: '',
     customer_notes: '',
+    password: '',
+    confirmPassword: '',
     // Order Info
     product_name: '',
     quantity: '',
@@ -50,6 +54,7 @@ export default function CreateOrderPage() {
     notes: ''
   })
   const [newProducts, setNewProducts] = useState([{ ...EMPTY_PRODUCT }])
+  const [showPassword, setShowPassword] = useState(false)
 
   // Load customers for selection when in existing mode
   useEffect(() => {
@@ -173,6 +178,12 @@ export default function CreateOrderPage() {
       return
     }
 
+    // Validate password confirmation
+    if (newBuyerForm.password && newBuyerForm.password !== newBuyerForm.confirmPassword) {
+      toast.error('Passwords do not match')
+      return
+    }
+
     // Date validation
     if (
       newBuyerForm.expected_dispatch_date &&
@@ -194,7 +205,8 @@ export default function CreateOrderPage() {
           phone: newBuyerForm.phone,
           country: newBuyerForm.country || null,
           address: newBuyerForm.address || null,
-          notes: newBuyerForm.customer_notes || null
+          notes: newBuyerForm.customer_notes || null,
+          password: newBuyerForm.password || null
         },
         order: {
           product_name: newBuyerForm.product_name || (productList[0]?.product_name || ''),
@@ -206,8 +218,17 @@ export default function CreateOrderPage() {
           products: productList,
         }
       }
-      await ordersApi.createWithNewCustomer(payload)
-      toast.success('Customer onboarded & first order created successfully!')
+      const res = await ordersApi.createWithNewCustomer(payload)
+      const assignedPassword = res.data?.data?.customer_password || newBuyerForm.password || 'Welcome@1234'
+      toast.success(
+        <div>
+          <p className="font-semibold">Customer onboarded & order created!</p>
+          <p className="text-xs mt-1">Login email: <strong>{newBuyerForm.email}</strong></p>
+          <p className="text-xs">Password: <strong>{assignedPassword}</strong></p>
+          <p className="text-xs text-amber-600 mt-1">Share credentials securely with the buyer.</p>
+        </div>,
+        { duration: 15000 }
+      )
       navigate('/orders')
     } catch (err) {
       console.error(err)
@@ -250,21 +271,23 @@ export default function CreateOrderPage() {
             </div>
           </button>
 
-          {/* Option B: New Buyer */}
-          <button
-            onClick={() => setWorkflowMode('new')}
-            className="flex flex-col text-left p-6 bg-white border border-agri-200 hover:border-forest-500 hover:shadow-md rounded-xl transition-all group space-y-4 outline-none"
-          >
-            <div className="w-12 h-12 rounded-lg bg-forest-50 flex items-center justify-center text-forest-600 group-hover:bg-forest-100 transition-colors">
-              <UserPlus size={24} />
-            </div>
-            <div>
-              <h2 className="text-base font-semibold text-slate-900 font-heading">Create New Buyer</h2>
-              <p className="text-xs text-slate-500 font-body mt-1.5 leading-relaxed">
-                Onboard a brand new customer company and initialize their login and first order.
-              </p>
-            </div>
-          </button>
+          {/* Option B: New Buyer (SUPER_ADMIN only) */}
+          {role === 'SUPER_ADMIN' && (
+            <button
+              onClick={() => setWorkflowMode('new')}
+              className="flex flex-col text-left p-6 bg-white border border-agri-200 hover:border-forest-500 hover:shadow-md rounded-xl transition-all group space-y-4 outline-none"
+            >
+              <div className="w-12 h-12 rounded-lg bg-forest-50 flex items-center justify-center text-forest-600 group-hover:bg-forest-100 transition-colors">
+                <UserPlus size={24} />
+              </div>
+              <div>
+                <h2 className="text-base font-semibold text-slate-900 font-heading">Create New Buyer</h2>
+                <p className="text-xs text-slate-500 font-body mt-1.5 leading-relaxed">
+                  Onboard a brand new customer company and initialize their login and first order.
+                </p>
+              </div>
+            </button>
+          )}
         </div>
 
         <div className="flex items-center justify-end pt-4 border-t border-agri-100">
@@ -651,6 +674,41 @@ export default function CreateOrderPage() {
                   className="w-full px-3 py-2.5 bg-white border border-agri-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 outline-none focus:ring-2 focus:ring-forest-500 font-body"
                 />
               </div>
+
+              {/* Password fields */}
+              <div className="md:col-span-2 border-t border-agri-100 pt-4 mt-2">
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">Set Buyer Login Password (Optional)</label>
+                <p className="text-[11px] text-slate-500 mb-2">Leave both fields blank to use the default password <strong>Welcome@1234</strong></p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name="password"
+                      value={newBuyerForm.password}
+                      onChange={handleNewChange}
+                      placeholder="Custom password (min 8 chars)"
+                      className="w-full px-3 py-2.5 bg-white border border-agri-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 outline-none focus:ring-2 focus:ring-forest-500 font-body pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                  <div>
+                    <input
+                      type="password"
+                      name="confirmPassword"
+                      value={newBuyerForm.confirmPassword}
+                      onChange={handleNewChange}
+                      placeholder="Confirm password"
+                      className="w-full px-3 py-2.5 bg-white border border-agri-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 outline-none focus:ring-2 focus:ring-forest-500 font-body"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -797,7 +855,7 @@ export default function CreateOrderPage() {
           {/* Process Notes */}
           <div className="bg-forest-50 border border-forest-100 rounded-lg p-4 space-y-2">
             <p className="text-xs text-forest-800 font-body">
-              <strong>Onboarding Note:</strong> A CUSTOMER-role login account will be generated automatically for the buyer contact email with the secure default password <code>Welcome@1234</code>. They will receive an email invitation containing their credentials.
+              <strong>Onboarding Note:</strong> A CUSTOMER-role login account will be generated automatically for the buyer contact email. If you set a custom password above it will be used; otherwise the secure default password <code>Welcome@1234</code> will be assigned. Share the credentials manually with the buyer after creation.
             </p>
           </div>
 
