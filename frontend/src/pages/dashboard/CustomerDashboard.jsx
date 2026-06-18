@@ -12,7 +12,7 @@ import {
   Package, Truck, CheckCircle, FileWarning,
   Loader2, Sprout, Clock, ArrowRight,
   ChevronRight, AlertCircle, Activity,
-  FileText, Image, Upload,
+  FileText, Image, Upload, Download,
 } from 'lucide-react'
 import OrderCard from '../../components/order/OrderCard'
 import MilestoneTimeline from '../../components/milestone/MilestoneTimeline'
