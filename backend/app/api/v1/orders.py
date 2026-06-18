@@ -213,7 +213,7 @@ def get_client_dashboard(
     pending_docs = 0
     active_order_ids = [
         r[0] for r in _scope(
-            db.query(Order.order_id).filter(Order.shipment_status.notin_(["DELIVERED", "CANCELLED"]))
+            db.query(Order.id).filter(Order.shipment_status.notin_(["DELIVERED", "CANCELLED"]))
         ).all()
     ]
     if active_order_ids:
@@ -225,11 +225,11 @@ def get_client_dashboard(
 
     # 2. Orders by status
     status_rows = _scope(
-        db.query(Order.shipment_status, func.count(Order.order_id))
+        db.query(Order.shipment_status, func.count(Order.id))
     ).group_by(Order.shipment_status).all()
 
     orders_by_status = [
-        {"status": s.value, "count": c} for s, c in status_rows
+        {"status": s, "count": c} for s, c in status_rows
     ]
 
     # 3. Top 5 products
@@ -237,7 +237,7 @@ def get_client_dashboard(
         OrderProduct.product_name,
         func.sum(OrderProduct.quantity).label("total_quantity"),
         OrderProduct.unit,
-    ).join(Order, OrderProduct.order_id == Order.order_id)
+    ).join(Order, OrderProduct.order_id == Order.id)
     product_q = _scope(product_q)
     top_products = [
         {
@@ -251,7 +251,7 @@ def get_client_dashboard(
     ]
 
     # 4. Recent activity
-    event_q = db.query(OrderEvent).join(Order, OrderEvent.order_id == Order.order_id)
+    event_q = db.query(OrderEvent).join(Order, OrderEvent.order_id == Order.id)
     event_q = _scope(event_q)
     recent_activity = [
         {
@@ -267,10 +267,10 @@ def get_client_dashboard(
     order_q = _scope(db.query(Order)).order_by(Order.created_at.desc()).limit(10).all()
     recent_orders = [
         {
-            "id": o.order_id,
+            "id": o.id,
             "order_code": o.order_code,
-            "status": o.shipment_status.value,
-            "overall_progress": STATUS_PROGRESS_MAP.get(o.shipment_status.value, 0),
+            "status": o.shipment_status,
+            "overall_progress": STATUS_PROGRESS_MAP.get(o.shipment_status, 0),
             "created_at": o.created_at.isoformat() if o.created_at else None,
         }
         for o in order_q

@@ -168,11 +168,12 @@ export default function CustomerDashboard() {
   const [docsLoading, setDocsLoading] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
-  const { data: dashRaw, isLoading: dashLoading } = useQuery({
+  const { data: dashRaw, isLoading: dashLoading, isError: dashError } = useQuery({
     queryKey: ['client-dashboard'],
     queryFn: () => ordersApi.getClientDashboard().then((r) => r.data?.data),
     refetchInterval: 60000,
     staleTime: 30000,
+    retry: 2,
   })
 
   const dashboardData = dashRaw || {}
@@ -277,6 +278,15 @@ export default function CustomerDashboard() {
       <div className="py-24 text-center flex flex-col items-center justify-center gap-2">
         <Loader2 className="w-8 h-8 animate-spin text-forest-700" />
         <p className="text-sm text-slate-400 font-body">Loading your dashboard...</p>
+      </div>
+    )
+  }
+
+  if (dashError && !dashboardData.total_orders) {
+    return (
+      <div className="py-24 text-center flex flex-col items-center justify-center gap-2">
+        <AlertCircle className="w-8 h-8 text-red-400" />
+        <p className="text-sm text-slate-500 font-body">Unable to load dashboard data. Please try again later.</p>
       </div>
     )
   }

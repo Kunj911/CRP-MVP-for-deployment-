@@ -101,7 +101,7 @@ def create_milestone(
     )
     return SuccessResponse(
         data=milestone,
-        message=f"Milestone '{milestone.stage_name.value}' created successfully",
+        message=f"Milestone '{milestone.stage_name}' created successfully",
     )
 
 
@@ -166,7 +166,7 @@ def update_milestone(
     return SuccessResponse(
         data=milestone,
         message=(
-            f"Milestone '{milestone.stage_name.value}' updated to '{milestone.status.value}'"
+            f"Milestone '{milestone.stage_name}' updated to '{milestone.status}'"
         ),
     )
 
@@ -242,7 +242,7 @@ def mark_stage_complete(
         logger.info("complete-stage OK: order_id=%s milestone_id=%s", order_id, milestone.id)
         return SuccessResponse(
             data=milestone,
-            message=f"Stage '{milestone.stage_name.value}' completed successfully",
+            message=f"Stage '{milestone.stage_name}' completed successfully",
         )
     except Exception:
         logger.exception("complete-stage FAILED: order_id=%s", order_id)

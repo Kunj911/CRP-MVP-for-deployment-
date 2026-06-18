@@ -206,7 +206,10 @@ export default function OrderDetailPage() {
               <Badge status={order.status} size="md" />
             </div>
             <p className="text-sm text-slate-500 font-body">
-              {order.product_name} · {Number(order.quantity).toLocaleString()} {order.unit}
+              {products.length > 0
+                ? `${products.length} Product${products.length > 1 ? 's' : ''}`
+                : `${order.product_name} · ${Number(order.quantity).toLocaleString()} ${order.unit}`
+              }
               {order.destination_country ? ` → ${order.destination_country}` : ''}
             </p>
           </div>
