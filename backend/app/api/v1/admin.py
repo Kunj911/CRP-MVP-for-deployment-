@@ -411,8 +411,11 @@ def cleanup_demo_data(
         db.query(Order).filter(Order.id.in_(order_ids)).delete(synchronize_session=False)
 
     if customer_ids:
-        # Delete customer users
-        db.query(User).filter(User.customer_id.in_(customer_ids)).delete(synchronize_session=False)
+        # Delete customer users only (role=CUSTOMER) — never touch staff accounts
+        db.query(User).filter(
+            User.customer_id.in_(customer_ids),
+            User.role == "CUSTOMER",
+        ).delete(synchronize_session=False)
         # Delete customers
         db.query(Customer).filter(Customer.id.in_(customer_ids)).delete(synchronize_session=False)
 
