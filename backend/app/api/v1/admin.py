@@ -305,16 +305,18 @@ def seed_demo_database(
 @router.post(
     "/fix-milestones",
     response_model=SuccessResponse[str],
-    summary="Backfill milestones for orders missing them (SUPER_ADMIN only)",
+    summary="Backfill milestones & activate first stage for orders missing them (SUPER_ADMIN only)",
 )
 def fix_milestones(
     current_user: SuperAdminUser,
     db: Session = Depends(get_db),
 ) -> SuccessResponse[str]:
-    """Initialize milestones for any orders that don't have them yet."""
+    """Initialize milestones for orders missing them and activate the first PENDING milestone for any order that has no active stage."""
     from app.models.milestone import Milestone
+    from app.schemas.milestone import MilestoneStatus
     from app.services.milestone_service import initialize_all_milestones
 
+    # Part 1: Backfill milestones for orders that have none
     orders_missing = db.query(Order.id, Order.order_code).filter(
         ~db.query(Milestone.id).filter(Milestone.order_id == Order.id).exists()
     ).all()
@@ -324,8 +326,36 @@ def fix_milestones(
         initialize_all_milestones(order_id=oid, current_user=current_user, db=db, commit=False)
         fixed.append(f"{ocode} (ID={oid})")
 
+    # Part 2: Activate first PENDING milestone for orders that have no IN_PROGRESS milestone
+    orders_no_active = db.query(Order.id, Order.order_code).filter(
+        ~db.query(Milestone.id).filter(
+            Milestone.order_id == Order.id,
+            Milestone.status == MilestoneStatus.IN_PROGRESS.value
+        ).exists()
+    ).all()
+
+    activated = []
+    for oid, ocode in orders_no_active:
+        first_pending = (
+            db.query(Milestone)
+            .filter(
+                Milestone.order_id == oid,
+                Milestone.status == MilestoneStatus.PENDING.value,
+            )
+            .order_by(Milestone.id)
+            .first()
+        )
+        if first_pending:
+            first_pending.status = MilestoneStatus.IN_PROGRESS.value
+            activated.append(f"{ocode} (ID={oid})")
+
     db.commit()
-    msg = f"Fixed {len(fixed)} orders: {', '.join(fixed) if fixed else 'none needed'}"
+    parts = []
+    if fixed:
+        parts.append(f"backfilled {len(fixed)} orders")
+    if activated:
+        parts.append(f"activated {len(activated)} orders")
+    msg = f"Fixed: {', '.join(parts) if parts else 'none needed'}"
     logger.info(msg)
     return SuccessResponse(data=msg, message="Milestone backfill complete")
 

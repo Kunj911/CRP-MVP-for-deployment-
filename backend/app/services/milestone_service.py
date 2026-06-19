@@ -223,7 +223,8 @@ def initialize_all_milestones(
     commit: bool = True,
 ) -> List[MilestoneResponse]:
     """
-    Create all 9 milestone stages for an order in sequence, all PENDING.
+    Create all 9 milestone stages for an order in sequence, all PENDING,
+    then activate the first milestone (PROCUREMENT) as IN_PROGRESS.
 
     Skips any stages that already exist (idempotent — safe to call multiple times).
     Called automatically when an order is created (optional).
@@ -262,6 +263,21 @@ def initialize_all_milestones(
                 target_id=m.id,
                 order_id=order_id,
                 description=f"Bulk init: milestone '{m.stage_name}' created for order_id={order_id}",
+            )
+
+        # Activate the first created milestone (PROCUREMENT) as IN_PROGRESS
+        first_stage = STAGE_SEQUENCE[0].value
+        first_milestone = next((m for m in created if m.stage_name == first_stage), None)
+        if first_milestone:
+            first_milestone.status = MilestoneStatus.IN_PROGRESS.value
+            db.flush()
+            _log_audit(
+                db=db,
+                user_id=current_user.id,
+                action_type="UPDATE",
+                target_id=first_milestone.id,
+                order_id=order_id,
+                description=f"Auto-activated milestone '{first_milestone.stage_name}' to IN_PROGRESS",
             )
 
     if commit:
