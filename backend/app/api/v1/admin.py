@@ -438,6 +438,37 @@ def cleanup_demo_data(
     return SuccessResponse(data=msg, message="Demo data removed. McCormick & Company preserved.")
 
 
+@router.get(
+    "/users",
+    response_model=SuccessResponse[list],
+    summary="List all users (SUPER_ADMIN only)",
+)
+def list_users(
+    current_user: SuperAdminUser,
+    db: Session = Depends(get_db),
+) -> SuccessResponse[list]:
+    """
+    Returns all users: id, full_name, email, role, customer_id, is_active.
+    Staff users have customer_id = None; customer users have a customer_id.
+    """
+    users = db.query(User).order_by(User.role, User.full_name).all()
+    data = [
+        {
+            "id": u.id,
+            "full_name": u.full_name,
+            "email": u.email,
+            "role": u.role,
+            "customer_id": u.customer_id,
+            "is_active": u.is_active,
+        }
+        for u in users
+    ]
+    return SuccessResponse(
+        data=data,
+        message=f"{len(data)} user(s) found",
+    )
+
+
 class DeactivateUserRequest(BaseModel):
     user_id: int
     deactivate: bool = True
