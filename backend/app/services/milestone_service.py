@@ -423,7 +423,12 @@ def update_milestone_status(
     )
 
     db.commit()
-    db.refresh(milestone)
+    try:
+        db.refresh(milestone)
+    except Exception:
+        # refresh may fail if the MySQL connection was interrupted after commit;
+        # data is already persisted — proceed with the in-memory object.
+        logger.warning("db.refresh failed after commit for milestone_id=%s", milestone.id)
     logger.info(
         "Milestone updated: milestone_id=%s %s→%s by user_id=%s",
         milestone.id, old_status, new_status.value, current_user.id,
