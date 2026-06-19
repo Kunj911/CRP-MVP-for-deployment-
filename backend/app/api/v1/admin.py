@@ -389,6 +389,50 @@ def send_test_email(
         )
 
 
+class CreateUserRequest(BaseModel):
+    full_name: str
+    email: str
+    role: str
+    password: str
+    phone: str | None = None
+
+
+@router.post(
+    "/users",
+    response_model=SuccessResponse[str],
+    summary="Create a new staff user",
+)
+def create_user(
+    data: CreateUserRequest,
+    current_user: SuperAdminUser,
+    db: Session = Depends(get_db),
+) -> SuccessResponse[str]:
+    existing = db.query(User).filter(User.email == data.email.strip().lower()).first()
+    if existing:
+        raise HTTPException(status_code=409, detail=f"User with email '{data.email}' already exists")
+
+    allowed_roles = {"SUPER_ADMIN", "ADMIN", "WAREHOUSE", "QA", "DOCUMENTATION"}
+    if data.role.upper() not in allowed_roles:
+        raise HTTPException(status_code=400, detail=f"Role must be one of: {', '.join(sorted(allowed_roles))}")
+
+    user = User(
+        full_name=data.full_name.strip(),
+        email=data.email.strip().lower(),
+        phone=data.phone.strip() if data.phone else None,
+        password_hash=hash_password(data.password),
+        role=data.role.upper(),
+        is_active=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    logger.info("Staff user created: id=%s email=%s role=%s by %s", user.id, user.email, user.role, current_user.email)
+    return SuccessResponse(
+        data=f"User '{user.full_name}' created with ID {user.id}",
+        message=f"Staff user {user.email} ({user.role}) created successfully",
+    )
+
+
 def _stage_role(stage_name: str) -> str | None:
     roles = {
         "PROCUREMENT": "WAREHOUSE",
