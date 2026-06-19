@@ -39,6 +39,7 @@ def send_email(
         return False
 
     provider = settings.EMAIL_PROVIDER.lower()
+    logger.info("Sending email via provider=%s to=%s subject=%s", provider, to_address, subject)
 
     if provider == "resend":
         return _send_via_resend(to_address, subject, body_text, body_html)
@@ -49,6 +50,7 @@ def send_email(
     if provider == "brevo":
         return _send_via_brevo(to_address, subject, body_text, body_html)
 
+    logger.warning("Unknown EMAIL_PROVIDER=%s — falling back to SMTP", provider)
     return _send_via_smtp(to_address, subject, body_text, body_html)
 
 
@@ -201,9 +203,13 @@ def _send_via_brevo(
     body_html: Optional[str],
 ) -> bool:
     """Send via Brevo Transactional Email API (HTTPS — port 443)."""
+    logger.info("_send_via_brevo called for %s", to_address)
+
     if not settings.BREVO_API_KEY:
         logger.warning("BREVO_API_KEY not set — skipping email to %s", to_address)
         return False
+
+    logger.info("BREVO_API_KEY is set (len=%d)", len(settings.BREVO_API_KEY))
 
     try:
         import httpx
