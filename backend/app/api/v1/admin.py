@@ -507,6 +507,28 @@ def deactivate_user(
     )
 
 
+@router.post(
+    "/run-migration",
+    response_model=SuccessResponse[str],
+    summary="Run pending database migration (SUPER_ADMIN only)",
+)
+def run_migration(
+    current_user: SuperAdminUser,
+    db: Session = Depends(get_db),
+) -> SuccessResponse[str]:
+    """Add the order_name column to the orders table (safe to re-run)."""
+    from sqlalchemy import text
+    try:
+        db.execute(text("ALTER TABLE orders ADD COLUMN order_name VARCHAR(200) DEFAULT NULL"))
+        db.commit()
+        return SuccessResponse(data="Column 'order_name' added", message="Migration applied successfully.")
+    except Exception as e:
+        db.rollback()
+        if "Duplicate column" in str(e) or "already exists" in str(e):
+            return SuccessResponse(data="Column already exists", message="No migration needed.")
+        raise HTTPException(status_code=500, detail=f"Migration failed: {str(e)}")
+
+
 class ResetPasswordRequest(BaseModel):
     new_password: str
 
