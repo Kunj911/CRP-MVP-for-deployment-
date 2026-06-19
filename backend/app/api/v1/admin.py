@@ -436,6 +436,9 @@ def cleanup_demo_data(
     msg = f"Cleanup complete: {', '.join(parts)}"
     logger.info(msg)
     return SuccessResponse(data=msg, message="Demo data removed. McCormick & Company preserved.")
+
+
+class DeactivateUserRequest(BaseModel):
     user_id: int
     deactivate: bool = True
 
