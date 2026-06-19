@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, SuperAdminUser
+from app.api.deps import get_db, SuperAdminUser, CurrentUser
 from app.config.settings import get_settings
 from app.core.security import hash_password
 from app.models.customer import Customer
@@ -346,7 +346,7 @@ def deactivate_user(
     summary="Send a test email to verify email configuration",
 )
 def send_test_email(
-    current_user: SuperAdminUser,
+    current_user: CurrentUser,
 ) -> SuccessResponse[str]:
     """Send a test email to the current user's email address to verify the email engine is working."""
     from app.services.channels.email_channel import send_email

@@ -349,47 +349,45 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Email Configuration Card — SUPER_ADMIN only */}
-      {user?.role === 'SUPER_ADMIN' && (
-        <div className="bg-white border border-agri-200 rounded-xl shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b border-agri-200 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-forest-50 text-forest-600 rounded-lg">
-                <Mail className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-base font-heading font-semibold text-slate-900">Email Configuration</h2>
-                <p className="text-xs text-slate-500 font-body font-normal">Verify that the email engine is working correctly.</p>
-              </div>
+      {/* Email Configuration Card */}
+      <div className="bg-white border border-agri-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="px-6 py-5 border-b border-agri-200 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-forest-50 text-forest-600 rounded-lg">
+              <Mail className="w-5 h-5" />
             </div>
-          </div>
-          <div className="p-6">
-            <div className="flex items-center justify-between gap-4">
-              <div className="text-sm text-slate-600 font-body">
-                Send a test email to <span className="font-semibold text-slate-800">{user?.email || 'your account email'}</span> to verify Brevo SMTP configuration and email deliverability.
-              </div>
-              <Button
-                variant="primary"
-                icon={Send}
-                loading={testingEmail}
-                onClick={handleTestEmail}
-                className="shrink-0"
-              >
-                Send Test Email
-              </Button>
+            <div>
+              <h2 className="text-base font-heading font-semibold text-slate-900">Email Configuration</h2>
+              <p className="text-xs text-slate-500 font-body font-normal">Verify that the email engine is working correctly.</p>
             </div>
-            {emailResult && (
-              <div className={`mt-4 text-sm font-body px-4 py-3 rounded-lg border ${
-                emailResult.ok
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                  : 'bg-red-50 text-red-800 border-red-200'
-              }`}>
-                {emailResult.message}
-              </div>
-            )}
           </div>
         </div>
-      )}
+        <div className="p-6">
+          <div className="flex items-center justify-between gap-4">
+            <div className="text-sm text-slate-600 font-body">
+              Send a test email to <span className="font-semibold text-slate-800">{user?.email || 'your account email'}</span> to verify Brevo SMTP configuration and email deliverability.
+            </div>
+            <Button
+              variant="primary"
+              icon={Send}
+              loading={testingEmail}
+              onClick={handleTestEmail}
+              className="shrink-0"
+            >
+              Send Test Email
+            </Button>
+          </div>
+          {emailResult && (
+            <div className={`mt-4 text-sm font-body px-4 py-3 rounded-lg border ${
+              emailResult.ok
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                : 'bg-red-50 text-red-800 border-red-200'
+            }`}>
+              {emailResult.message}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
