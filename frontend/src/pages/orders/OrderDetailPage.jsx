@@ -30,7 +30,7 @@ export default function OrderDetailPage() {
   const [activeTab, setActiveTab] = useState('Timeline')
   const [uploadOpen, setUploadOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
-  const [editForm, setEditForm] = useState({ product_name: '', quantity: '', unit: '', notes: '' })
+  const [editForm, setEditForm] = useState({ products: [], notes: '' })
   const [saving, setSaving] = useState(false)
 
   const [order, setOrder] = useState(null)
@@ -71,6 +71,7 @@ export default function OrderDetailPage() {
         product_name: rawOrder.product_name || rawOrder.commodity_name || '',
         quantity: rawOrder.quantity || 0,
         unit: rawOrder.unit || 'KG',
+        products: rawOrder.products || [],
         destination_country: rawOrder.customer?.country,
         overall_progress: timeline?.overall_progress ?? STATUS_PROGRESS[status] ?? 0,
         customer_name: rawOrder.customer?.company_name,
@@ -124,10 +125,15 @@ export default function OrderDetailPage() {
   }
 
   const handleOpenEdit = () => {
+    const products = (order.products || []).map((p) => ({
+      id: p.id,
+      product_name: p.product_name || '',
+      quantity: p.quantity ?? '',
+      unit: p.unit || 'KG',
+      notes: p.notes || '',
+    }))
     setEditForm({
-      product_name: order.product_name || '',
-      quantity: order.quantity || '',
-      unit: order.unit || 'KG',
+      products: products.length ? products : [{ id: null, product_name: '', quantity: '', unit: 'KG', notes: '' }],
       notes: order.notes || '',
     })
     setEditOpen(true)
@@ -136,12 +142,12 @@ export default function OrderDetailPage() {
   const handleEditSave = async () => {
     setSaving(true)
     try {
-      await ordersApi.update(orderId, {
-        product_name: editForm.product_name,
-        quantity: Number(editForm.quantity),
-        unit: editForm.unit,
-        notes: editForm.notes,
-      })
+      const payload = { notes: editForm.notes }
+      const products = editForm.products.filter((p) => p.product_name?.trim())
+      if (products.length) {
+        payload.products = products
+      }
+      await ordersApi.update(orderId, payload)
       setEditOpen(false)
       await loadData()
     } catch (err) {
@@ -150,6 +156,25 @@ export default function OrderDetailPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleProductChange = (idx, field, value) => {
+    const updated = [...editForm.products]
+    updated[idx] = { ...updated[idx], [field]: value }
+    setEditForm({ ...editForm, products: updated })
+  }
+
+  const handleAddProduct = () => {
+    setEditForm({
+      ...editForm,
+      products: [...editForm.products, { id: null, product_name: '', quantity: '', unit: 'KG', notes: '' }],
+    })
+  }
+
+  const handleRemoveProduct = (idx) => {
+    if (editForm.products.length <= 1) return
+    const updated = editForm.products.filter((_, i) => i !== idx)
+    setEditForm({ ...editForm, products: updated })
   }
 
   const handleDownload = async (doc) => {
@@ -362,35 +387,60 @@ export default function OrderDetailPage() {
             <p className="text-xs text-slate-400 font-body -mt-2">{order.order_code}</p>
 
             <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Product Name</label>
-                <input
-                  type="text"
-                  value={editForm.product_name}
-                  onChange={(e) => setEditForm({ ...editForm, product_name: e.target.value })}
-                  className="w-full px-3 py-2 border border-agri-300 rounded-lg text-sm focus:outline-none focus:border-forest-500"
-                />
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-slate-600">Products</label>
+                <button
+                  type="button"
+                  onClick={handleAddProduct}
+                  className="text-xs text-forest-700 hover:text-forest-800 font-medium"
+                >
+                  + Add Product
+                </button>
               </div>
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Quantity</label>
-                  <input
-                    type="number"
-                    value={editForm.quantity}
-                    onChange={(e) => setEditForm({ ...editForm, quantity: e.target.value })}
-                    className="w-full px-3 py-2 border border-agri-300 rounded-lg text-sm focus:outline-none focus:border-forest-500"
-                  />
+
+              {editForm.products.map((p, idx) => (
+                <div key={idx} className="p-3 bg-agri-50 rounded-lg space-y-2 relative">
+                  {editForm.products.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveProduct(idx)}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                    >
+                      &times;
+                    </button>
+                  )}
+                  <div>
+                    <label className="block text-[10px] font-medium text-slate-500 mb-0.5">Product Name</label>
+                    <input
+                      type="text"
+                      value={p.product_name}
+                      onChange={(e) => handleProductChange(idx, 'product_name', e.target.value)}
+                      className="w-full px-3 py-2 border border-agri-300 rounded-lg text-sm focus:outline-none focus:border-forest-500"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="block text-[10px] font-medium text-slate-500 mb-0.5">Quantity</label>
+                      <input
+                        type="number"
+                        value={p.quantity}
+                        onChange={(e) => handleProductChange(idx, 'quantity', e.target.value)}
+                        className="w-full px-3 py-2 border border-agri-300 rounded-lg text-sm focus:outline-none focus:border-forest-500"
+                      />
+                    </div>
+                    <div className="w-20">
+                      <label className="block text-[10px] font-medium text-slate-500 mb-0.5">Unit</label>
+                      <input
+                        type="text"
+                        value={p.unit}
+                        onChange={(e) => handleProductChange(idx, 'unit', e.target.value)}
+                        className="w-full px-3 py-2 border border-agri-300 rounded-lg text-sm focus:outline-none focus:border-forest-500"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="w-24">
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Unit</label>
-                  <input
-                    type="text"
-                    value={editForm.unit}
-                    onChange={(e) => setEditForm({ ...editForm, unit: e.target.value })}
-                    className="w-full px-3 py-2 border border-agri-300 rounded-lg text-sm focus:outline-none focus:border-forest-500"
-                  />
-                </div>
-              </div>
+              ))}
+
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Notes</label>
                 <textarea
