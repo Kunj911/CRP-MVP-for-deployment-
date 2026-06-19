@@ -59,6 +59,9 @@ class Order(Base):
     order_code: Mapped[str] = mapped_column(
         String(50), unique=True, nullable=False
     )
+    order_name: Mapped[Optional[str]] = mapped_column(
+        String(200), nullable=True
+    )
 
     # ── Foreign keys ──────────────────────────────────────────────────────────
     customer_id: Mapped[int] = mapped_column(

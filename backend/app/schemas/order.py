@@ -100,6 +100,9 @@ class OrderCreate(BaseModel):
     """Body for POST /api/v1/orders"""
 
     customer_id: int = Field(..., gt=0, description="ID of the customer (buyer)")
+    order_name: Optional[str] = Field(
+        None, max_length=200, description="Human-readable order name. Falls back to order_code if empty."
+    )
     product_name: Optional[str] = Field(None, min_length=1, max_length=200)
     quantity: Optional[Decimal] = Field(
         None, gt=0, decimal_places=2, description="Quantity (e.g. 500.00)"
@@ -163,6 +166,7 @@ class OrderUpdate(BaseModel):
     All fields optional — only provided fields will be updated.
     Status changes must go through OrderStatusUpdate instead.
     """
+    order_name: Optional[str] = Field(None, max_length=200)
     product_name: Optional[str] = Field(None, min_length=1, max_length=200)
     quantity: Optional[Decimal] = Field(None, gt=0, decimal_places=2)
     unit: Optional[str] = Field(None, max_length=20)
@@ -222,6 +226,7 @@ class OrderListItem(BaseModel):
     """
     id: int
     order_code: str
+    order_name: Optional[str] = None
     customer_id: int
     company_name: str          # denormalized from customer join
     destination_country: Optional[str] = None  # denormalized from customer join
@@ -244,6 +249,7 @@ class OrderResponse(BaseModel):
     """
     id: int
     order_code: str
+    order_name: Optional[str] = None
     customer_id: int
     product_name: str
     quantity: Optional[Decimal]
@@ -286,6 +292,7 @@ class OrderFilters(BaseModel):
 
 
 class OrderCreateFields(BaseModel):
+    order_name: Optional[str] = Field(None, max_length=200)
     product_name: Optional[str] = Field(None, min_length=1, max_length=200)
     quantity: Optional[Decimal] = Field(None, gt=0, decimal_places=2)
     unit: Optional[str] = Field(None, max_length=20)

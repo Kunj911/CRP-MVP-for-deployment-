@@ -25,6 +25,7 @@ export default function CreateOrderPage() {
   // Form states
   const [existingBuyerForm, setExistingBuyerForm] = useState({
     customer_id: '',
+    order_name: '',
     product_name: '',
     quantity: '',
     unit: 'MT',
@@ -46,6 +47,7 @@ export default function CreateOrderPage() {
     password: '',
     confirmPassword: '',
     // Order Info
+    order_name: '',
     product_name: '',
     quantity: '',
     unit: 'MT',
@@ -149,6 +151,7 @@ export default function CreateOrderPage() {
       const productList = productsToPayload(existingProducts)
       const payload = {
         customer_id: Number(existingBuyerForm.customer_id),
+        order_name: existingBuyerForm.order_name.trim() || null,
         product_name: existingBuyerForm.product_name || (productList[0]?.product_name || ''),
         quantity: existingBuyerForm.quantity ? Number(existingBuyerForm.quantity) : null,
         unit: existingBuyerForm.unit,
@@ -209,6 +212,7 @@ export default function CreateOrderPage() {
           password: newBuyerForm.password || null
         },
         order: {
+          order_name: newBuyerForm.order_name.trim() || null,
           product_name: newBuyerForm.product_name || (productList[0]?.product_name || ''),
           quantity: newBuyerForm.quantity ? Number(newBuyerForm.quantity) : null,
           unit: newBuyerForm.unit,
@@ -399,7 +403,21 @@ export default function CreateOrderPage() {
 
           <div className="space-y-4">
             <h2 className="text-sm font-semibold text-slate-800 font-heading border-b border-agri-100 pb-2">Order Details</h2>
-            
+
+            <div className="md:col-span-2">
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                Order Name <span className="text-slate-400 font-normal">(optional — auto-generated if empty)</span>
+              </label>
+              <input
+                type="text"
+                name="order_name"
+                value={existingBuyerForm.order_name}
+                onChange={handleExistingChange}
+                placeholder="e.g. McCormick Q3 Turmeric Shipment"
+                className="w-full px-3 py-2.5 bg-white border border-agri-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 outline-none focus:ring-2 focus:ring-forest-500 font-body"
+              />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-xs font-medium text-slate-700 mb-1.5">Commodity / Product Name</label>
@@ -715,7 +733,21 @@ export default function CreateOrderPage() {
           {/* Section 2: Order Info */}
           <div className="space-y-4">
             <h2 className="text-sm font-semibold text-slate-800 font-heading border-b border-agri-100 pb-2">2. First Order Specifications</h2>
-            
+
+            <div className="md:col-span-2">
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                Order Name <span className="text-slate-400 font-normal">(optional — auto-generated if empty)</span>
+              </label>
+              <input
+                type="text"
+                name="order_name"
+                value={newBuyerForm.order_name}
+                onChange={handleNewChange}
+                placeholder="e.g. McCormick Q3 Turmeric Shipment"
+                className="w-full px-3 py-2.5 bg-white border border-agri-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 outline-none focus:ring-2 focus:ring-forest-500 font-body"
+              />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-xs font-medium text-slate-700 mb-1.5">Commodity / Product Name</label>

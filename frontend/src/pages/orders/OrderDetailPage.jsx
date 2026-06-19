@@ -67,6 +67,7 @@ export default function OrderDetailPage() {
       setOrder({
         id: rawOrder.id,
         order_code: rawOrder.order_code,
+        order_name: rawOrder.order_name,
         status: status,
         product_name: rawOrder.product_name || rawOrder.commodity_name || '',
         quantity: rawOrder.quantity || 0,
@@ -227,7 +228,7 @@ export default function OrderDetailPage() {
           </button>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="font-heading font-bold text-xl text-slate-900">{order.order_code}</h1>
+              <h1 className="font-heading font-bold text-xl text-slate-900">{order.order_name || order.order_code}</h1>
               <Badge status={order.status} size="md" />
             </div>
             <p className="text-sm text-slate-500 font-body">
@@ -384,7 +385,7 @@ export default function OrderDetailPage() {
           <div className="absolute inset-0 bg-black/40" onClick={() => setEditOpen(false)} />
           <div className="relative bg-white rounded-xl p-5 w-full max-w-md mx-4 shadow-xl space-y-4">
             <h3 className="font-heading font-semibold text-slate-900 text-base">Edit Order</h3>
-            <p className="text-xs text-slate-400 font-body -mt-2">{order.order_code}</p>
+            <p className="text-xs text-slate-400 font-body -mt-2">{order.order_name || order.order_code}</p>
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">

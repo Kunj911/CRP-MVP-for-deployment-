@@ -34,7 +34,7 @@ export default function OrderCard({ order }) {
           </div>
           <div>
             <p className="font-heading font-semibold text-slate-900 text-sm leading-tight">
-              {order.order_code}
+              {order.order_name || order.order_code}
             </p>
             <p className="text-[11px] text-slate-400 mt-0.5 font-body">
               {order.customer_name ?? 'Customer'}

@@ -184,6 +184,7 @@ def create_order(
 
     order = Order(
         order_code=code,
+        order_name=data.order_name or None,
         customer_id=data.customer_id,
         product_name=product_name,
         quantity=quantity,
@@ -746,6 +747,7 @@ def create_order_with_new_customer(
 
         order = Order(
             order_code=code,
+            order_name=data.order.order_name or None,
             customer_id=customer.id,
             product_name=product_name,
             quantity=quantity,

@@ -26,6 +26,7 @@ function normalizeOrder(order) {
   return {
     id: order.id,
     order_code: order.order_code,
+    order_name: order.order_name,
     status,
     customer_name: order.company_name || order.customer_name,
     commodity_name: order.product_name || order.commodity_name,
@@ -80,6 +81,7 @@ export default function OrdersListPage() {
     return orders.filter((o) => {
       const matchSearch =
         o.order_code.toLowerCase().includes(search.toLowerCase()) ||
+        (o.order_name || '').toLowerCase().includes(search.toLowerCase()) ||
         (o.customer_name || '').toLowerCase().includes(search.toLowerCase()) ||
         (o.commodity_name || '').toLowerCase().includes(search.toLowerCase())
       const matchStatus =
