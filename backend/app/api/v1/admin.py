@@ -302,6 +302,34 @@ def seed_demo_database(
     return SuccessResponse(data=msg, message="Database seeded successfully")
 
 
+@router.post(
+    "/fix-milestones",
+    response_model=SuccessResponse[str],
+    summary="Backfill milestones for orders missing them (SUPER_ADMIN only)",
+)
+def fix_milestones(
+    current_user: SuperAdminUser,
+    db: Session = Depends(get_db),
+) -> SuccessResponse[str]:
+    """Initialize milestones for any orders that don't have them yet."""
+    from app.models.milestone import Milestone
+    from app.services.milestone_service import initialize_all_milestones
+
+    orders_missing = db.query(Order.id, Order.order_code).filter(
+        ~db.query(Milestone.id).filter(Milestone.order_id == Order.id).exists()
+    ).all()
+
+    fixed = []
+    for oid, ocode in orders_missing:
+        initialize_all_milestones(order_id=oid, current_user=current_user, db=db, commit=False)
+        fixed.append(f"{ocode} (ID={oid})")
+
+    db.commit()
+    msg = f"Fixed {len(fixed)} orders: {', '.join(fixed) if fixed else 'none needed'}"
+    logger.info(msg)
+    return SuccessResponse(data=msg, message="Milestone backfill complete")
+
+
 class DeactivateUserRequest(BaseModel):
     user_id: int
     deactivate: bool = True

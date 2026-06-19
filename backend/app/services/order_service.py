@@ -186,6 +186,10 @@ def create_order(
     if data.products:
         _sync_order_products(order.id, data.products, db)
 
+    # Initialize 9-stage milestone pipeline
+    from app.services.milestone_service import initialize_all_milestones
+    initialize_all_milestones(order_id=order.id, current_user=current_user, db=db, commit=False)
+
     _log_audit(
         db=db,
         user_id=current_user.id,
