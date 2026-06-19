@@ -507,6 +507,77 @@ def deactivate_user(
     )
 
 
+class ResetPasswordRequest(BaseModel):
+    new_password: str
+
+
+@router.post(
+    "/users/{user_id}/reset-password",
+    response_model=SuccessResponse[str],
+    summary="Reset another user's password (SUPER_ADMIN only)",
+)
+def reset_user_password(
+    user_id: int,
+    body: ResetPasswordRequest,
+    current_user: SuperAdminUser,
+    db: Session = Depends(get_db),
+) -> SuccessResponse[str]:
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.password_hash = hash_password(body.new_password)
+    db.add(AuditLog(
+        user_id=current_user.id,
+        action_type="UPDATE",
+        target_table="users",
+        target_id=user.id,
+        description=f"Password reset for '{user.email}' by {current_user.full_name}.",
+    ))
+    db.commit()
+    logger.info("Password reset: user_id=%s (%s) by %s", user.id, user.email, current_user.email)
+    return SuccessResponse(
+        data=f"Password reset for '{user.email}'",
+        message="Password updated successfully.",
+    )
+
+
+@router.delete(
+    "/users/{user_id}",
+    response_model=SuccessResponse[str],
+    summary="Permanently delete a user (SUPER_ADMIN only)",
+)
+def delete_user(
+    user_id: int,
+    current_user: SuperAdminUser,
+    db: Session = Depends(get_db),
+) -> SuccessResponse[str]:
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.role == "SUPER_ADMIN":
+        raise HTTPException(status_code=403, detail="Cannot delete another SUPER_ADMIN")
+    if user.id == current_user.id:
+        raise HTTPException(status_code=403, detail="Cannot delete yourself")
+    # Cleanup FK references
+    db.query(AuditLog).filter(AuditLog.user_id == user.id).delete(synchronize_session=False)
+    from app.models.login_session import LoginSession
+    db.query(LoginSession).filter(LoginSession.user_id == user.id).delete(synchronize_session=False)
+    db.query(Notification).filter(Notification.user_id == user.id).delete(synchronize_session=False)
+    # Nullify foreign keys on related records
+    db.query(Order).filter(Order.created_by == user.id).update({"created_by": None}, synchronize_session=False)
+    db.query(Milestone).filter(Milestone.completed_by == user.id).update({"completed_by": None}, synchronize_session=False)
+    db.query(MediaFile).filter(MediaFile.uploaded_by == user.id).update({"uploaded_by": None}, synchronize_session=False)
+    db.query(Document).filter(Document.uploaded_by == user.id).update({"uploaded_by": None}, synchronize_session=False)
+    email = user.email
+    db.delete(user)
+    db.commit()
+    logger.info("User deleted: user_id=%s (%s) by %s", user_id, email, current_user.email)
+    return SuccessResponse(
+        data=f"User '{email}' deleted",
+        message=f"User '{email}' has been permanently removed.",
+    )
+
+
 @router.post(
     "/settings/test-email",
     response_model=SuccessResponse[str],
