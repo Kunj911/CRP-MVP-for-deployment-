@@ -84,7 +84,7 @@ def _log_audit(
         action_type=action_type,
         target_table="orders",
         target_id=target_id,
-        order_id=order_id or target_id,
+        order_id=order_id,
         description=description,
     ))
 
@@ -191,6 +191,7 @@ def create_order(
         user_id=current_user.id,
         action_type="CREATE",
         target_id=order.id,
+        order_id=order.id,
         description=(
             f"Order '{order.order_code}' created for customer_id={data.customer_id} "
             f"product='{order.product_name}'"
@@ -402,6 +403,7 @@ def update_order(
         user_id=current_user.id,
         action_type="UPDATE",
         target_id=order.id,
+        order_id=order.id,
         description=(
             f"Order '{order.order_code}' updated. "
             f"Fields changed: {', '.join(updated_fields)}"
@@ -560,6 +562,7 @@ def update_order_status(
         user_id=current_user.id,
         action_type="UPDATE",
         target_id=order.id,
+        order_id=order.id,
         description=(
             f"Order '{order.order_code}' status changed: "
             f"{old_status} → {new_status.value}"
@@ -621,6 +624,7 @@ def cancel_order(
         user_id=current_user.id,
         action_type="DELETE",
         target_id=order.id,
+        order_id=order.id,
         description=(
             f"Order '{order.order_code}' cancelled by "
             f"user_id={current_user.id}. Status was: {old_status}."
@@ -749,6 +753,7 @@ def create_order_with_new_customer(
             user_id=current_user.id,
             action_type="CREATE",
             target_id=customer.id,
+            order_id=order.id,
             description=f"Customer '{customer.company_name}' onboarded during combined order creation.",
         )
         _log_audit(
@@ -756,6 +761,7 @@ def create_order_with_new_customer(
             user_id=current_user.id,
             action_type="CREATE",
             target_id=user.id,
+            order_id=order.id,
             description=f"User '{user.email}' created for new customer '{customer.company_name}'.",
         )
         _log_audit(
@@ -763,6 +769,7 @@ def create_order_with_new_customer(
             user_id=current_user.id,
             action_type="CREATE",
             target_id=order.id,
+            order_id=order.id,
             description=f"Order '{order.order_code}' created for newly onboarded customer '{customer.company_name}'.",
         )
 
