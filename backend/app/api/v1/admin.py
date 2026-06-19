@@ -18,6 +18,7 @@ from app.models.order_document_requirement import OrderDocumentRequirement
 from app.models.media_file import MediaFile
 from app.models.notification import Notification
 from app.models.audit_log import AuditLog
+from app.models.order_product import OrderProduct
 from sqlalchemy import text
 from app.schemas.common import SuccessResponse
 
@@ -360,7 +361,78 @@ def fix_milestones(
     return SuccessResponse(data=msg, message="Milestone backfill complete")
 
 
-class DeactivateUserRequest(BaseModel):
+@router.post(
+    "/cleanup-demo",
+    response_model=SuccessResponse[str],
+    summary="Delete all demo/test customers and their data, keeping only McCormick & Company",
+)
+def cleanup_demo_data(
+    current_user: SuperAdminUser,
+    db: Session = Depends(get_db),
+) -> SuccessResponse[str]:
+    """
+    Deletes all customers EXCEPT McCormick & Company (ID=13) and their associated
+    data: orders, milestones, documents, events, media, notifications, audit logs,
+    and customer-scoped users. Keeps all staff users and McCormick's data intact.
+    Also removes orphan/test orders that have no customer_id.
+    """
+    keep_customer_ids = [13]
+
+    # Collect order IDs to delete
+    orders_to_delete = (
+        db.query(Order.id)
+        .filter(
+            (Order.customer_id == None) |
+            (Order.customer_id.notin_(keep_customer_ids))
+        )
+        .all()
+    )
+    order_ids = [row.id for row in orders_to_delete]
+    customer_ids_to_delete = (
+        db.query(Customer.id)
+        .filter(Customer.id.notin_(keep_customer_ids))
+        .all()
+    )
+    customer_ids = [row.id for row in customer_ids_to_delete]
+
+    if not order_ids and not customer_ids:
+        return SuccessResponse(data="Nothing to clean up", message="No demo data found")
+
+    # Delete in FK-safe order
+    if order_ids:
+        db.query(Notification).filter(Notification.order_id.in_(order_ids)).delete(synchronize_session=False)
+        db.query(AuditLog).filter(AuditLog.order_id.in_(order_ids)).delete(synchronize_session=False)
+        db.query(OrderEvent).filter(OrderEvent.order_id.in_(order_ids)).delete(synchronize_session=False)
+        db.query(Milestone).filter(Milestone.order_id.in_(order_ids)).delete(synchronize_session=False)
+        db.query(OrderDocumentRequirement).filter(OrderDocumentRequirement.order_id.in_(order_ids)).delete(synchronize_session=False)
+        db.query(Document).filter(Document.order_id.in_(order_ids)).delete(synchronize_session=False)
+        db.query(MediaFile).filter(MediaFile.order_id.in_(order_ids)).delete(synchronize_session=False)
+        db.query(OrderProduct).filter(OrderProduct.order_id.in_(order_ids)).delete(synchronize_session=False)
+        db.query(Order).filter(Order.id.in_(order_ids)).delete(synchronize_session=False)
+
+    if customer_ids:
+        # Delete customer users
+        db.query(User).filter(User.customer_id.in_(customer_ids)).delete(synchronize_session=False)
+        # Delete customers
+        db.query(Customer).filter(Customer.id.in_(customer_ids)).delete(synchronize_session=False)
+
+    # Delete audit logs with customer target_id (no customer FK, but cleanup)
+    if customer_ids:
+        db.query(AuditLog).filter(
+            AuditLog.target_table == "customers",
+            AuditLog.target_id.in_(customer_ids),
+        ).delete(synchronize_session=False)
+
+    db.commit()
+
+    parts = []
+    if customer_ids:
+        parts.append(f"deleted {len(customer_ids)} customers")
+    if order_ids:
+        parts.append(f"deleted {len(order_ids)} orders")
+    msg = f"Cleanup complete: {', '.join(parts)}"
+    logger.info(msg)
+    return SuccessResponse(data=msg, message="Demo data removed. McCormick & Company preserved.")
     user_id: int
     deactivate: bool = True
 
