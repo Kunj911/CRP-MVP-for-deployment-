@@ -326,6 +326,7 @@ def list_orders(
         d = {
             "id": order.id,
             "order_code": order.order_code,
+            "order_name": order.order_name,
             "customer_id": order.customer_id,
             "company_name": company_name,
             "destination_country": country,
