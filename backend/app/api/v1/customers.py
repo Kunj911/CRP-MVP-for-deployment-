@@ -14,6 +14,7 @@ from app.schemas.customer import (
     CustomerOnboard,
     CustomerListResponse,
     ActiveCustomerResponse,
+    ActiveOrderSummary,
 )
 
 logger = logging.getLogger(__name__)
