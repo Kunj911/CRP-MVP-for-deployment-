@@ -238,8 +238,17 @@ def _send_via_brevo(
         logger.error("Brevo HTTP error sending email to %s: %s", to_address, exc)
         return False
 
+    logger.info("Brevo response: status=%s body=%s", response.status_code, response.text[:1000])
+
     if response.status_code in (200, 201, 202):
         logger.info("Email accepted by Brevo for %s | subject=%s", to_address, subject)
+        # Check if Brevo returned any warning about sender verification
+        try:
+            resp_data = response.json()
+            if resp_data.get("message"):
+                logger.info("Brevo message: %s", resp_data["message"])
+        except Exception:
+            pass
         return True
 
     logger.error(
