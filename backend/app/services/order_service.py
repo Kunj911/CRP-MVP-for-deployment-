@@ -105,6 +105,21 @@ def _get_order_or_404(order_id: int, db: Session) -> Order:
     return order
 
 
+def _activate_first_milestone(order_id: int, db: Session) -> None:
+    """Set the first PENDING milestone (PROCUREMENT) to IN_PROGRESS."""
+    from app.models.milestone import Milestone
+    from app.schemas.milestone import MilestoneStatus
+    first = (
+        db.query(Milestone)
+        .filter(Milestone.order_id == order_id, Milestone.status == MilestoneStatus.PENDING.value)
+        .order_by(Milestone.id)
+        .first()
+    )
+    if first:
+        first.status = MilestoneStatus.IN_PROGRESS.value
+        db.flush()
+
+
 def _assert_can_write(current_user: User) -> None:
     """Only ADMIN and SUPER_ADMIN can create or modify orders."""
     if current_user.role not in {"ADMIN", "SUPER_ADMIN"}:
@@ -143,7 +158,7 @@ def create_order(
 
     - Validates customer exists
     - Generates unique order_code (retries on collision)
-    - Sets initial status = CREATED
+    - Sets initial status = PROCUREMENT (orders are created only when procurement starts)
     - Creates order_products if provided
     - Writes audit log
     """
@@ -173,7 +188,7 @@ def create_order(
         product_name=product_name,
         quantity=quantity,
         unit=unit,
-        shipment_status=ShipmentStatus.CREATED.value,
+        shipment_status=ShipmentStatus.PROCUREMENT.value,
         expected_dispatch_date=data.expected_dispatch_date,
         expected_delivery_date=data.expected_delivery_date,
         notes=data.notes,
@@ -186,9 +201,10 @@ def create_order(
     if data.products:
         _sync_order_products(order.id, data.products, db)
 
-    # Initialize 9-stage milestone pipeline
+    # Initialize 9-stage milestone pipeline with first stage active
     from app.services.milestone_service import initialize_all_milestones
     initialize_all_milestones(order_id=order.id, current_user=current_user, db=db, commit=False)
+    _activate_first_milestone(order.id, db)
 
     _log_audit(
         db=db,
@@ -734,7 +750,7 @@ def create_order_with_new_customer(
             product_name=product_name,
             quantity=quantity,
             unit=unit,
-            shipment_status=ShipmentStatus.CREATED.value,
+            shipment_status=ShipmentStatus.PROCUREMENT.value,
             expected_dispatch_date=data.order.expected_dispatch_date,
             expected_delivery_date=data.order.expected_delivery_date,
             notes=data.order.notes,
@@ -750,6 +766,7 @@ def create_order_with_new_customer(
         # 5. Initialize milestones (commit=False to keep them in this transaction)
         from app.services.milestone_service import initialize_all_milestones
         initialize_all_milestones(order_id=order.id, current_user=current_user, db=db, commit=False)
+        _activate_first_milestone(order.id, db)
 
         # 6. Audit logs
         _log_audit(
