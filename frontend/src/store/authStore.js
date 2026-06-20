@@ -3,15 +3,10 @@
  *
  * Zustand auth store — IN-MEMORY ONLY (no persist).
  *
- * Security hardening:
- *   - refreshToken REMOVED — only exists as HttpOnly cookie
- *   - persist middleware REMOVED — no auth data in localStorage
- *   - Session bootstrap flow via bootstrapSession()
- *   - isSessionLoading state for app startup
- *
- * The access token lives only in JS memory. On page reload,
- * the app calls GET /auth/me with the HttpOnly refresh cookie
- * to restore the session (see App.jsx bootstrapSession).
+ * The access token lives only in JS memory. On page reload
+ * there is no session restoration — user must log in again.
+ * During SPA navigation, the Axios interceptor handles
+ * silent token refresh via the HttpOnly cookie.
  */
 
 import { create } from 'zustand'
@@ -31,7 +26,6 @@ const useAuthStore = create((set, get) => ({
    * NOTE: No refreshToken parameter — it's HttpOnly cookie only.
    */
   login: (user, accessToken) => {
-    Cookies.set('session_exists', 'true', { expires: 7, secure: true, sameSite: 'lax' })
     set({ user, accessToken, isSessionLoading: false })
   },
 
@@ -47,7 +41,6 @@ const useAuthStore = create((set, get) => ({
       }).catch(() => {})
     } catch {}
 
-    Cookies.remove('session_exists')
     Cookies.remove('csrf_token')
     // Stop background notification polling to prevent memory leaks and 401 spam
     useNotificationStore.getState().stopPolling()
@@ -65,40 +58,11 @@ const useAuthStore = create((set, get) => ({
   setSessionLoading: (loading) => set({ isSessionLoading: loading }),
 
   /**
-   * Bootstrap session from server on app startup.
-   * Attempts to restore session via refresh cookie + /auth/me.
+   * Bootstrap — no session persistence across page reloads.
    */
   bootstrapSession: async () => {
-    // If no session exists, skip refresh call to avoid useless 401s (Task 18)
-    if (!Cookies.get('session_exists')) {
-      set({ user: null, accessToken: null, isSessionLoading: false })
-      return
-    }
-
-    set({ isSessionLoading: true })
-    try {
-      // Import dynamically to avoid circular dependency
-      const { default: apiClient } = await import('../api/client')
-
-      // First, try to refresh the access token using the HttpOnly cookie
-      const refreshRes = await apiClient.post('/auth/refresh')
-      const newAccessToken = refreshRes.data.access_token
-
-      // Then fetch user profile
-      const meRes = await apiClient.get('/auth/me', {
-        headers: { Authorization: `Bearer ${newAccessToken}` }
-      })
-
-      set({
-        user: meRes.data,
-        accessToken: newAccessToken,
-        isSessionLoading: false,
-      })
-    } catch {
-      // No valid session — user needs to log in, clear indicator
-      Cookies.remove('session_exists')
-      set({ user: null, accessToken: null, isSessionLoading: false })
-    }
+    // No session persistence across page reloads — user must log in each time
+    set({ isSessionLoading: false })
   },
 
   // ── Computed helpers ───────────────────────────────────────────────────────

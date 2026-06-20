@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str = "change-this-secret"
     JWT_SECRET_KEYS: str = ""  # Comma-separated list of secrets for rotation
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 10
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     MFA_ENCRYPTION_KEY: str = ""  # 32-byte Fernet key for encrypting totp_secret
     MFA_REQUIRED_ROLES: str = "SUPER_ADMIN,ADMIN"
