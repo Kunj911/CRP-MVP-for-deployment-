@@ -16,9 +16,6 @@ export default function MobileNav() {
     { to: '/documents',    icon: FileText,        label: 'Docs'                },
   ]
 
-export default function MobileNav() {
-  const isCustomer = useAuthStore((s) => s.isCustomer())
-
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-agri-200 flex h-14">
       {TABS

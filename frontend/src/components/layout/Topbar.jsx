@@ -178,8 +178,9 @@ export default function Topbar() {
                 <Eye size={12} /> View all notifications
               </button>
             </div>
-          </div>
-        )}
+            </div>
+          )}
+        </div>
 
         {/* Profile avatar + dropdown */}
         <div className="relative" ref={profileRef}>
