@@ -1,14 +1,20 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Package, Upload, FileText, Bell } from 'lucide-react'
+import { LayoutDashboard, Package, Upload, FileText, Users } from 'lucide-react'
 import useAuthStore from '../../store/authStore'
 
-const TABS = [
-  { to: '/',             icon: LayoutDashboard, label: 'Home',  end: true },
-  { to: '/orders',       icon: Package,         label: 'Orders'           },
-  { to: '/uploads',      icon: Upload,          label: 'Upload', staffOnly: true },
-  { to: '/documents',    icon: FileText,        label: 'Docs'             },
-  { to: '/notifications',icon: Bell,            label: 'Alerts'           },
-]
+export default function MobileNav() {
+  const user = useAuthStore((s) => s.user)
+  const isCustomer = useAuthStore((s) => s.isCustomer())
+  const role = user?.role
+  const isStaffWithCustomers = role === 'SUPER_ADMIN' || role === 'ADMIN'
+
+  const TABS = [
+    { to: '/',             icon: LayoutDashboard, label: 'Home',     end: true },
+    { to: '/orders',       icon: Package,         label: 'Orders'              },
+    ...(isStaffWithCustomers ? [{ to: '/customers', icon: Users, label: 'Customers' }] : []),
+    { to: '/uploads',      icon: Upload,          label: 'Upload',  staffOnly: true },
+    { to: '/documents',    icon: FileText,        label: 'Docs'                },
+  ]
 
 export default function MobileNav() {
   const isCustomer = useAuthStore((s) => s.isCustomer())
