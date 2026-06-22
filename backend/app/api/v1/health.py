@@ -26,5 +26,5 @@ def health_check() -> dict[str, Any]:
 
 @router.get("/users-list", tags=["System"])
 def list_all_users(db: Session = Depends(get_db)):
-    rows = db.execute(text("SELECT id, email, full_name, role, is_active FROM users ORDER BY id")).fetchall()
+    rows = db.execute(text("SELECT user_id, email, full_name, role, is_active FROM users ORDER BY user_id")).fetchall()
     return [dict(r._mapping) for r in rows]
