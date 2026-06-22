@@ -1,8 +1,6 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from typing import Any
-from sqlalchemy import text
-from sqlalchemy.orm import Session
-from app.database.connection import check_db_connection, get_db
+from app.database.connection import check_db_connection
 from app.core.redis_client import redis_client
 
 router = APIRouter()
@@ -23,8 +21,3 @@ def health_check() -> dict[str, Any]:
         "database": "connected" if db_ok else "unreachable",
         "redis": "connected" if redis_ok else "unreachable"
     }
-
-@router.get("/users-list", tags=["System"])
-def list_all_users(db: Session = Depends(get_db)):
-    rows = db.execute(text("SELECT user_id, email, full_name, role, is_active FROM users ORDER BY user_id")).fetchall()
-    return [dict(r._mapping) for r in rows]
